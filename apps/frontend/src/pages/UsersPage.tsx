@@ -1,11 +1,13 @@
-import { PlusOutlined } from '@ant-design/icons';
-import { Alert, App, Button, Form, Input, Modal, Select, Switch, Table, Tag, TreeSelect } from 'antd';
+import { EditOutlined, PlusOutlined, UnlockOutlined } from '@ant-design/icons';
+import { Alert, App, Avatar, Button, Card, Form, Input, Modal, Select, Switch, Table, Tag, Tooltip, TreeSelect } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { api, errorMessage } from '../api/client';
 import type { OrgTreeNode, Page, RoleRow, UserRow } from '../api/types';
 import { toTreeSelect } from '../components/orgTree';
-import { formatDateTime } from '../format';
+import ToneTag from '../components/ToneTag';
+import { formatDateTime, formatNumber } from '../format';
 import { useAsync } from '../hooks/useAsync';
 
 interface UserForm {
@@ -20,23 +22,43 @@ interface UserForm {
   isActive?: boolean;
 }
 
+interface Query {
+  page: number;
+  pageSize: number;
+  search?: string;
+  roleCode?: string;
+  orgUnitId?: number;
+}
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('');
+
+const isLocked = (u: UserRow) => !!u.lockedUntil && dayjs(u.lockedUntil).isAfter(dayjs());
+
 /** Foydalanuvchilar (Kirish boshqaruvi). Parol kamida 12 belgi (TZ 9-bo'lim). */
 export default function UsersPage() {
   const { message } = App.useApp();
-  const [query, setQuery] = useState({ page: 1, pageSize: 20, search: undefined as string | undefined });
+  const [query, setQuery] = useState<Query>({ page: 1, pageSize: 20 });
   const [editing, setEditing] = useState<UserRow | 'new' | null>(null);
   const [form] = Form.useForm<UserForm>();
   const users = useAsync(() => api.get<Page<UserRow>>('/users', { params: query }).then((r) => r.data), [query]);
   const reference = useAsync(
     () =>
       Promise.all([
-        api.get<RoleRow[]>('/reference/roles').then((r) => r.data),
+        api.get<RoleRow[]>('/roles').then((r) => r.data),
         api.get<OrgTreeNode[]>('/org-units/tree').then((r) => r.data),
       ]),
     [],
   );
   const [roles = [], orgTree = []] = reference.data ?? [];
   const treeData = useMemo(() => toTreeSelect(orgTree), [orgTree]);
+
+  const setFilter = (patch: Partial<Query>) => setQuery((q) => ({ ...q, ...patch, page: 1 }));
 
   const open = (user: UserRow | 'new') => {
     setEditing(user);
@@ -74,19 +96,67 @@ export default function UsersPage() {
     }
   };
 
+  const unlock = async (user: UserRow) => {
+    try {
+      await api.post(`/users/${user.id}/unlock`);
+      message.success(`${user.fullName}: blok olib tashlandi`);
+      void users.reload();
+    } catch (err) {
+      message.error(errorMessage(err));
+    }
+  };
+
   const columns: ColumnsType<UserRow> = [
-    { title: 'Login', dataIndex: 'username', width: 160 },
-    { title: 'F.I.Sh.', dataIndex: 'fullName' },
-    { title: "Bo'linma", render: (_, u) => u.orgUnit.name, ellipsis: true },
-    { title: 'Rollar', render: (_, u) => u.roles.map((r) => <Tag key={r.code}>{r.name}</Tag>) },
-    { title: 'SIP', dataIndex: 'sipExtension', width: 80, render: (v: string | null) => v ?? '—' },
+    {
+      title: 'Foydalanuvchi',
+      width: 330,
+      render: (_, u) => (
+        <span className="user-cell">
+          <Avatar size={32} className="user-avatar">
+            {initials(u.fullName)}
+          </Avatar>
+          <span className="cell-stack">
+            <span className="cell-strong cell-ellipsis">{u.fullName}</span>
+            <span className="cell-sub cell-ellipsis">
+              <span className="mono">{u.username}</span> · {u.lastLoginAt ? `oxirgi kirish ${formatDateTime(u.lastLoginAt)}` : 'hali kirmagan'}
+            </span>
+          </span>
+        </span>
+      ),
+    },
+    { title: 'Rollar', width: 240, render: (_, u) => u.roles.map((r) => <Tag key={r.code}>{r.name}</Tag>) },
+    { title: "Bo'linma", ellipsis: true, render: (_, u) => u.orgUnit.name },
+    { title: 'SIP', dataIndex: 'sipExtension', width: 80, render: (v: string | null) => (v ? <span className="mono">{v}</span> : '—') },
     {
       title: 'Holat',
-      dataIndex: 'isActive',
-      width: 100,
-      render: (active: boolean) => (active ? <Tag color="green">Faol</Tag> : <Tag>O'chirilgan</Tag>),
+      width: 150,
+      render: (_, u) =>
+        isLocked(u) ? (
+          <Tooltip title={`5 marta noto'g'ri parol · ${formatDateTime(u.lockedUntil)} gacha`}>
+            <span>
+              <ToneTag tone="red">Bloklangan</ToneTag>
+            </span>
+          </Tooltip>
+        ) : u.isActive ? (
+          <ToneTag tone="green">Faol</ToneTag>
+        ) : (
+          <ToneTag tone="grey">O'chirilgan</ToneTag>
+        ),
     },
-    { title: 'Oxirgi kirish', dataIndex: 'lastLoginAt', width: 150, render: formatDateTime },
+    {
+      title: <span className="visually-hidden">Amallar</span>,
+      width: 200,
+      render: (_, u) => (
+        <span className="user-actions" onClick={(e) => e.stopPropagation()}>
+          {isLocked(u) && (
+            <Button size="small" icon={<UnlockOutlined />} onClick={() => void unlock(u)}>
+              Blokdan chiqarish
+            </Button>
+          )}
+          <Button size="small" type="text" icon={<EditOutlined />} aria-label={`${u.fullName}: tahrirlash`} onClick={() => open(u)} />
+        </span>
+      ),
+    },
   ];
 
   const isNew = editing === 'new';
@@ -95,7 +165,13 @@ export default function UsersPage() {
   return (
     <>
       <div className="page-header">
-        <h1>Foydalanuvchilar</h1>
+        <div>
+          <h1>Foydalanuvchilar</h1>
+          <span className="page-sub">
+            {users.data ? `${formatNumber(users.data.total)} ta foydalanuvchi · ` : ''}
+            parol kamida 12 belgi, 5 marta xato kiritilsa hisob vaqtincha bloklanadi
+          </span>
+        </div>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
           Yangi foydalanuvchi
         </Button>
@@ -103,26 +179,51 @@ export default function UsersPage() {
       <div className="toolbar">
         <Input.Search
           placeholder="Login yoki F.I.Sh."
+          aria-label="Foydalanuvchini qidirish"
           allowClear
+          style={{ width: 280 }}
+          onSearch={(search) => setFilter({ search: search || undefined })}
+        />
+        <Select
+          allowClear
+          placeholder="Barcha rollar"
+          aria-label="Rol"
+          style={{ width: 230 }}
+          value={query.roleCode}
+          onChange={(roleCode?: string) => setFilter({ roleCode })}
+          options={roles.map((r) => ({ value: r.code, label: r.name }))}
+        />
+        <TreeSelect
+          allowClear
+          showSearch
+          treeNodeFilterProp="title"
+          placeholder="Barcha bo'linmalar"
+          aria-label="Bo'linma"
           style={{ width: 300 }}
-          onSearch={(search) => setQuery((q) => ({ ...q, page: 1, search: search || undefined }))}
+          value={query.orgUnitId}
+          onChange={(orgUnitId?: number) => setFilter({ orgUnitId })}
+          treeData={treeData}
         />
       </div>
       {users.error && <Alert type="error" message={users.error} showIcon style={{ marginBottom: 16 }} />}
-      <Table
-        rowKey="id"
-        loading={users.loading}
-        columns={columns}
-        dataSource={users.data?.items ?? []}
-        rowClassName={() => 'clickable-row'}
-        onRow={(u) => ({ onClick: () => open(u) })}
-        pagination={{
-          current: query.page,
-          pageSize: query.pageSize,
-          total: users.data?.total ?? 0,
-          onChange: (page, pageSize) => setQuery((q) => ({ ...q, page, pageSize })),
-        }}
-      />
+      <Card size="small" styles={{ body: { padding: 0 } }}>
+        <Table
+          rowKey="id"
+          loading={users.loading}
+          columns={columns}
+          dataSource={users.data?.items ?? []}
+          scroll={{ x: 1000 }}
+          rowClassName={() => 'clickable-row'}
+          onRow={(u) => ({ onClick: () => open(u) })}
+          pagination={{
+            current: query.page,
+            pageSize: query.pageSize,
+            total: users.data?.total ?? 0,
+            showTotal: (total, [from, to]) => `${from}–${to} / ${formatNumber(total)}`,
+            onChange: (page, pageSize) => setQuery((q) => ({ ...q, page, pageSize })),
+          }}
+        />
+      </Card>
 
       <Modal
         open={editing !== null}

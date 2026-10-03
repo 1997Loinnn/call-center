@@ -46,6 +46,20 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [P.AuditRead]: 'Audit jurnali',
 };
 
+/** Rol tahrirlagichi va huquqlar matritsasi uchun ruxsatlar guruhlari. */
+export const PERMISSION_GROUPS: { label: string; codes: string[] }[] = [
+  {
+    label: 'Murojaatlar',
+    codes: [P.TicketsRead, P.TicketsCreate, P.TicketsRoute, P.TicketsAssign, P.TicketsAnswer, P.TicketsApprove, P.TicketsReopen, P.TicketsConfidential],
+  },
+  { label: "Fuqarolar va qo'ng'iroqlar", codes: [P.CitizensRead, P.CallsRead, P.RecordingsPlay, P.TelephonyUse] },
+  { label: 'Boshqaruv markazi', codes: [P.MonitoringView, P.ReportsView, P.AuditRead] },
+  { label: 'Tuzilma va sozlamalar', codes: [P.OrgRead, P.OrgManage, P.UsersManage, P.SettingsManage] },
+];
+
+/** Shaxsiy yoki maxfiy ma'lumotga kirish beradigan ruxsatlar: berishda ehtiyot bo'lish kerak. */
+export const SENSITIVE_PERMISSIONS: string[] = [P.TicketsConfidential, P.CitizensRead, P.RecordingsPlay, P.AuditRead, P.UsersManage];
+
 export const STATUS_META: Record<TicketStatus, { label: string; tone: Tone }> = {
   NEW: { label: 'Yangi', tone: 'blue' },
   ROUTED: { label: "Yo'naltirildi", tone: 'teal' },

@@ -207,6 +207,8 @@ export interface UserRow {
   email: string | null;
   sipExtension: string | null;
   isActive: boolean;
+  /** 5 marta noto'g'ri paroldan keyin vaqtincha blok */
+  lockedUntil: string | null;
   lastLoginAt: string | null;
   orgUnit: Named;
   roles: { code: string; name: string }[];
@@ -220,6 +222,8 @@ export interface RoleRow {
   scope: DataScope;
   permissions: string[];
   isSystem: boolean;
+  /** /roles qaytaradi (/reference/roles da yo'q) */
+  userCount?: number;
 }
 
 export interface AuditRow {

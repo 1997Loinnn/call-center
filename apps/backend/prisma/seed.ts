@@ -220,9 +220,11 @@ async function main(): Promise<void> {
   // Rollar
   const roleIds = new Map<string, number>();
   for (const role of SYSTEM_ROLES) {
+    // Mavjud rol qayta yozilmaydi: administrator o'zgartirgan nom, doira va ruxsatlar saqlanib qoladi.
+    // Tizim roliga yangi ruxsat kerak bo'lsa, u migratsiya orqali qo'shiladi.
     const row = await prisma.role.upsert({
       where: { code: role.code },
-      update: { name: role.name, description: role.description, scope: role.scope, permissions: role.permissions, isSystem: true },
+      update: { isSystem: true },
       create: { ...role, isSystem: true },
     });
     roleIds.set(role.code, row.id);

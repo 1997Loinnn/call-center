@@ -102,4 +102,9 @@ export class UsersQueryDto extends PageQueryDto {
   @Type(() => Number)
   @IsInt()
   orgUnitId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  roleCode?: string;
 }

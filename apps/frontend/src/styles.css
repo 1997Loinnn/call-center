@@ -43,6 +43,30 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Foydalanuvchi katagi (avatar + ism) va qator amallari */
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.user-avatar.ant-avatar {
+  flex-shrink: 0;
+  background: #e8ebef;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.user-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+}
+
 /* Faqat ekran o'quvchi uchun (masalan, ikonka tugmali ustun sarlavhasi) */
 .visually-hidden {
   position: absolute;

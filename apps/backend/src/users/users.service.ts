@@ -18,6 +18,7 @@ const USER_SELECT = {
   email: true,
   sipExtension: true,
   isActive: true,
+  lockedUntil: true,
   lastLoginAt: true,
   createdAt: true,
   orgUnit: { select: { id: true, name: true } },
@@ -38,6 +39,7 @@ export class UsersService {
   async list(query: UsersQueryDto): Promise<Page<ReturnType<typeof toDto>>> {
     const where: Prisma.UserWhereInput = {
       orgUnitId: query.orgUnitId,
+      roles: query.roleCode ? { some: { role: { code: query.roleCode } } } : undefined,
       OR: query.search
         ? [
             { username: { contains: query.search, mode: 'insensitive' } },
@@ -105,6 +107,13 @@ export class UsersService {
       data: { passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS), failedLogins: 0, lockedUntil: null },
     });
     await this.audit.log({ actorId: actor.id, action: 'user.reset_password', entityType: 'User', entityId: id });
+  }
+
+  /** 5 marta noto'g'ri paroldan keyingi blokni olib tashlaydi (parolni o'zgartirmasdan). */
+  async unlock(id: number, actor: AuthUser): Promise<void> {
+    if (!(await this.prisma.user.findUnique({ where: { id } }))) throw new NotFoundException('Foydalanuvchi topilmadi');
+    await this.prisma.user.update({ where: { id }, data: { failedLogins: 0, lockedUntil: null } });
+    await this.audit.log({ actorId: actor.id, action: 'user.unlock', entityType: 'User', entityId: id });
   }
 
   private async resolveRoles(codes: string[]): Promise<number[]> {

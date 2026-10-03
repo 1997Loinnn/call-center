@@ -15,6 +15,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { RecordingsModule } from './recordings/recordings.module';
 import { ReferenceModule } from './reference/reference.module';
 import { ReportsModule } from './reports/reports.module';
+import { RolesModule } from './roles/roles.module';
 import { TelephonyModule } from './telephony/telephony.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { UsersModule } from './users/users.module';
@@ -28,6 +29,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     RealtimeModule,
     UsersModule,
+    RolesModule,
     OrgUnitsModule,
     ReferenceModule,
     CitizensModule,

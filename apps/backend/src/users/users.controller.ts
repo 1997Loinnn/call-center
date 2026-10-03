@@ -35,6 +35,13 @@ export class UsersController {
     return this.users.update(id, dto, actor);
   }
 
+  @Post(':id/unlock')
+  @HttpCode(204)
+  @RequirePermissions(Permission.UsersManage)
+  unlock(@Param('id', ParseIntPipe) id: number, @CurrentUser() actor: AuthUser) {
+    return this.users.unlock(id, actor);
+  }
+
   @Post(':id/reset-password')
   @HttpCode(204)
   @RequirePermissions(Permission.UsersManage)

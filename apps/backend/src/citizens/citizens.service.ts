@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { AuthUser } from '../common/auth-user';
@@ -62,5 +62,22 @@ export class CitizensService {
 
     await this.audit.log({ actorId: user.id, action: 'citizen.view', entityType: 'Citizen', entityId: citizen?.id ?? phone, ...meta });
     return { phone, citizen, tickets, calls };
+  }
+
+  /**
+   * Murojaat raqami bo'yicha: shu murojaatni yozgan fuqaroning kartasi.
+   * Anonim murojaat orqali karta ochilmaydi, maxfiysi — faqat tickets.confidential ruxsati bilan.
+   */
+  async cardByTicketNumber(numberInput: string, user: AuthUser, meta: RequestMeta) {
+    const ticket = await this.prisma.ticket.findFirst({
+      where: {
+        number: { equals: numberInput.trim(), mode: 'insensitive' },
+        isAnonymous: false,
+        ...(hasPermission(user, Permission.TicketsConfidential) ? {} : { isConfidential: false }),
+      },
+      select: { citizen: { select: { phone: true } } },
+    });
+    if (!ticket?.citizen) throw new NotFoundException("Bu raqamli murojaat yoki unga bog'langan fuqaro topilmadi");
+    return this.cardByPhone(ticket.citizen.phone, user, meta);
   }
 }

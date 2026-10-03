@@ -85,6 +85,35 @@ const CATEGORIES = [
   { code: 'other', nameUz: 'Boshqa masalalar' },
 ];
 
+// Qo'ng'iroq mavzulari: toifaning quyi bandlari, operator panelida raqamli karta bo'lib chiqadi.
+// Raqam = tartib (sortOrder). Namuna ro'yxat — buyurtmachi bilan tasdiqlanadi.
+const TOPICS = [
+  { code: 'topic.01', parent: 'application-status', nameUz: "Ariza holatini bilish (ariza raqami bo'yicha)" },
+  { code: 'topic.02', parent: 'application-status', nameUz: "Ariza ko'rib chiqish muddati o'tib ketgan" },
+  { code: 'topic.03', parent: 'property-registration', nameUz: "Uy-joyni ro'yxatdan o'tkazish tartibi va hujjatlar" },
+  { code: 'topic.04', parent: 'property-registration', nameUz: "Meros bo'yicha mulk huquqini rasmiylashtirish" },
+  { code: 'topic.05', parent: 'property-registration', nameUz: "Oldi-sotdidan keyin huquqni ro'yxatga olish" },
+  { code: 'topic.06', parent: 'property-registration', nameUz: "Ro'yxatdan o'tkazish rad etilgan — sababini bilish" },
+  { code: 'topic.07', parent: 'cadastre-passport', nameUz: 'Kadastr pasportini olish tartibi' },
+  { code: 'topic.08', parent: 'cadastre-passport', nameUz: 'Kadastr pasportidagi xatoni tuzatish' },
+  { code: 'topic.09', parent: 'cadastre-passport', nameUz: "Kadastr hujjati uchun to'lov miqdori" },
+  { code: 'topic.10', parent: 'lease-registration', nameUz: "Ijara shartnomasini ro'yxatdan o'tkazish" },
+  { code: 'topic.11', parent: 'lease-registration', nameUz: 'Ijara shartnomasini bekor qilish' },
+  { code: 'topic.12', parent: 'mortgage-servitude', nameUz: 'Ipoteka (garov) taqiqini olib tashlash' },
+  { code: 'topic.13', parent: 'mortgage-servitude', nameUz: 'Servitut belgilash tartibi' },
+  { code: 'topic.14', parent: 'address', nameUz: "Ko'chmas mulkka yangi manzil berish" },
+  { code: 'topic.15', parent: 'address', nameUz: "Manzilni o'zgartirish yoki aniqlashtirish" },
+  { code: 'topic.16', parent: 'geodesy', nameUz: 'Geodeziya-kartografiya litsenziyasi' },
+  { code: 'topic.17', parent: 'geodesy', nameUz: "Yer uchastkasi chegaralarini o'lchash" },
+  { code: 'topic.18', parent: 'staff-complaint', nameUz: "Xodim qabulda qo'pol muomala qildi" },
+  { code: 'topic.19', parent: 'staff-complaint', nameUz: "Hujjat qabul qilinmadi yoki asossiz talab qo'yildi" },
+  { code: 'topic.20', parent: 'corruption', nameUz: "Pora yoki noqonuniy to'lov so'ralgani haqida" },
+  { code: 'topic.21', parent: 'other', nameUz: 'my.gov.uz orqali ariza berishda muammo' },
+  { code: 'topic.22', parent: 'other', nameUz: "Hududiy bo'linma manzili va qabul vaqti" },
+  { code: 'topic.23', parent: 'other', nameUz: 'Xizmatdan minnatdorchilik' },
+  { code: 'topic.24', parent: 'other', nameUz: 'Boshqa masala (tavsifda yozing)' },
+];
+
 // UCM6510 dagi haqiqiy navbat raqamlari bilan almashtiriladi
 const QUEUES = [
   { pbxNumber: '6500', name: 'Umumiy navbat', language: 'uz' },
@@ -208,6 +237,18 @@ async function main(): Promise<void> {
       create: { ...category, sortOrder: index },
     });
     categoryIds.set(category.code, row.id);
+  }
+
+  // Mavzular: maxfiylik va ijro muddati ota toifadan olinadi
+  for (const [index, topic] of TOPICS.entries()) {
+    const parent = CATEGORIES.find((c) => c.code === topic.parent)!;
+    const data = {
+      nameUz: topic.nameUz,
+      parentId: categoryIds.get(topic.parent)!,
+      isConfidential: parent.isConfidential ?? false,
+      sortOrder: index + 1,
+    };
+    await prisma.category.upsert({ where: { code: topic.code }, update: data, create: { code: topic.code, ...data } });
   }
 
   // Yo'naltirish jadvali: faqat bo'sh bo'lsa (administrator o'zgartirgan qoidalar saqlanib qoladi)

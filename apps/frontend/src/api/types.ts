@@ -89,6 +89,8 @@ export interface Category {
   nameUz: string;
   slaDays: number;
   isConfidential: boolean;
+  /** Mavzular uchun operator kartasidagi raqam */
+  sortOrder: number;
 }
 
 export interface Region {
@@ -141,7 +143,13 @@ export interface CallRow {
 
 export interface CitizenCard {
   phone: string;
-  citizen: { id: number; phone: string; fullName: string | null; region: { nameUz: string } | null } | null;
+  citizen: {
+    id: number;
+    phone: string;
+    fullName: string | null;
+    region: { id: number; nameUz: string } | null;
+    district: { id: number; nameUz: string } | null;
+  } | null;
   tickets: {
     id: number;
     number: string;

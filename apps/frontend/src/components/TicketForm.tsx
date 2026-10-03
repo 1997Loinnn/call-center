@@ -1,9 +1,11 @@
-import { App, Alert, Button, Card, Checkbox, Col, Form, Input, Row, Select, Switch, TreeSelect, type FormInstance } from 'antd';
+import { BranchesOutlined, LockOutlined, SendOutlined, UndoOutlined } from '@ant-design/icons';
+import { Alert, App, Button, Card, Checkbox, Col, Form, Input, Row, Segmented, Select, Switch, TreeSelect, type FormInstance } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { Category, OrgTreeNode, Region, TicketListItem, TicketType } from '../api/types';
 import { TYPE_LABELS } from '../constants';
-import { useAsync } from '../hooks/useAsync';
+import TopicPicker from './operator/TopicPicker';
 import { toTreeSelect } from './orgTree';
 
 export interface TicketFormValues {
@@ -11,7 +13,6 @@ export interface TicketFormValues {
   categoryId?: number;
   regionId?: number;
   districtId?: number;
-  subject: string;
   description: string;
   citizenPhone?: string;
   citizenName?: string;
@@ -23,37 +24,41 @@ export interface TicketFormValues {
   answer?: string;
 }
 
+// Joyida yopish backend qoidasi bilan bir xil (ticket-workflow.ts: canCloseImmediately)
 const CLOSABLE: TicketType[] = ['INFO', 'GRATITUDE'];
+const TYPE_ORDER: TicketType[] = ['INFO', 'APPLICATION', 'COMPLAINT', 'CORRUPTION', 'GRATITUDE'];
 
-/** Murojaat kartasi (F-OP-04): yo'naltirish jadvali bo'yicha mas'ul bo'linma avtomatik taklif qilinadi. */
-export default function TicketForm({ form, pbxCallId, onCreated }: {
+/** Murojaat yaratish (F-OP-04): mavzu kartasi tanlanadi, mas'ul bo'linma yo'naltirish jadvalidan taklif qilinadi. */
+export default function TicketForm({ form, pbxCallId, categories, regions, orgTree, created, onCreated, onRouteChange }: {
   form: FormInstance<TicketFormValues>;
   pbxCallId?: string;
+  categories: Category[];
+  regions: Region[];
+  orgTree: OrgTreeNode[];
+  created: TicketListItem | null;
   onCreated: (ticket: TicketListItem) => void;
+  onRouteChange?: (routeName: string | undefined, slaDays: number | undefined) => void;
 }) {
   const { message } = App.useApp();
   const [saving, setSaving] = useState(false);
   const [suggestion, setSuggestion] = useState<{ id: number; name: string } | null>(null);
-
-  const reference = useAsync(
-    () =>
-      Promise.all([
-        api.get<Category[]>('/reference/categories').then((r) => r.data),
-        api.get<Region[]>('/reference/regions').then((r) => r.data),
-        api.get<OrgTreeNode[]>('/org-units/tree').then((r) => r.data),
-      ]),
-    [],
-  );
-  const [categories = [], regions = [], orgTree = []] = reference.data ?? [];
+  const [pickUnit, setPickUnit] = useState(false);
   const treeData = useMemo(() => toTreeSelect(orgTree), [orgTree]);
 
   const type = Form.useWatch('type', form);
   const categoryId = Form.useWatch('categoryId', form);
   const regionId = Form.useWatch('regionId', form);
   const districtId = Form.useWatch('districtId', form);
+  const targetOrgUnitId = Form.useWatch('targetOrgUnitId', form);
   const closeImmediately = Form.useWatch('closeImmediately', form);
   const districts = regions.find((r) => r.id === regionId)?.districts ?? [];
-  const isCorruption = type === 'CORRUPTION' || categories.find((c) => c.id === categoryId)?.isConfidential;
+  const topic = categories.find((c) => c.id === categoryId);
+  const isCorruption = type === 'CORRUPTION' || !!topic?.isConfidential;
+  const closable = CLOSABLE.includes(type);
+
+  useEffect(() => {
+    if (!closable && form.getFieldValue('closeImmediately')) form.setFieldValue('closeImmediately', false);
+  }, [closable, form]);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,15 +75,24 @@ export default function TicketForm({ form, pbxCallId, onCreated }: {
     };
   }, [categoryId, regionId, districtId, form]);
 
+  const chosenUnit = targetOrgUnitId === suggestion?.id ? suggestion?.name : undefined;
+  useEffect(() => {
+    onRouteChange?.(isCorruption ? "Korrupsiyaga qarshi kurash bo'limi" : (chosenUnit ?? suggestion?.name), topic?.slaDays);
+  }, [onRouteChange, isCorruption, chosenUnit, suggestion?.name, topic?.slaDays]);
+
   const onFinish = async (values: TicketFormValues) => {
     setSaving(true);
     try {
+      const chosen = categories.find((c) => c.id === values.categoryId);
       const payload = {
         ...values,
+        // Mavzu nomi murojaat mavzusi bo'ladi; operator batafsilini tavsifga yozadi
+        subject: chosen?.nameUz ?? TYPE_LABELS[values.type],
         targetOrgUnitId: values.closeImmediately || isCorruption ? undefined : values.targetOrgUnitId,
         pbxCallId,
       };
       const res = await api.post<TicketListItem>('/tickets', payload);
+      setPickUnit(false);
       onCreated(res.data);
     } catch (err) {
       message.error(errorMessage(err));
@@ -87,35 +101,120 @@ export default function TicketForm({ form, pbxCallId, onCreated }: {
     }
   };
 
+  const reset = () => {
+    form.resetFields();
+    setPickUnit(false);
+  };
+
   return (
-    <Card title="Yangi murojaat" size="small">
-      {reference.error && <Alert type="error" message={reference.error} showIcon style={{ marginBottom: 12 }} />}
-      <Form<TicketFormValues> form={form} layout="vertical" initialValues={{ type: 'APPLICATION' }} onFinish={onFinish}>
+    <Form<TicketFormValues> form={form} layout="vertical" initialValues={{ type: 'INFO' }} onFinish={onFinish}>
+      <Card
+        size="small"
+        className="composer"
+        title="Murojaat yaratish"
+        extra={
+          <Form.Item name="type" noStyle>
+            <Segmented size="small" options={TYPE_ORDER.map((t) => ({ value: t, label: TYPE_LABELS[t] }))} />
+          </Form.Item>
+        }
+        actions={[
+          <div key="actions" className="composer-actions">
+            <Button type="primary" htmlType="submit" loading={saving} icon={<SendOutlined />} iconPosition="end">
+              Yuborish
+            </Button>
+            <Button icon={<UndoOutlined />} onClick={reset}>
+              Tozalash
+            </Button>
+          </div>,
+        ]}
+      >
+        {created && (
+          <Alert
+            type="success"
+            showIcon
+            closable
+            className="composer-alert"
+            message={
+              <>
+                <b className="mono">{created.number}</b> saqlandi
+                {created.assignedOrgUnit ? ` va ${created.assignedOrgUnit.name}ga yuborildi` : ''}.{' '}
+                <Link to={`/tickets/${created.id}`}>Ochish</Link>
+              </>
+            }
+          />
+        )}
+        {isCorruption && (
+          <div className="confidential-note">
+            <LockOutlined />
+            <span>Maxfiy murojaat: korrupsiyaga qarshi kurash bo'limiga avtomatik yuboriladi va saqlangandan keyin sizga ko'rinmaydi.</span>
+            <Form.Item name="isAnonymous" valuePropName="checked" noStyle>
+              <Switch size="small" aria-label="Anonim murojaat" />
+            </Form.Item>
+            <span>Anonim</span>
+          </div>
+        )}
+
+        <Form.Item name="categoryId" rules={[{ required: true, message: 'Mavzuni tanlang' }]}>
+          <TopicPicker categories={categories} />
+        </Form.Item>
+
+        {topic && (
+          <div className="route-info">
+            <BranchesOutlined />
+            {closeImmediately ? (
+              <span>Murojaat darhol «Yopildi» holatida saqlanadi.</span>
+            ) : isCorruption ? (
+              <span>
+                Yo'naltirish: <b>Korrupsiyaga qarshi kurash bo'limi</b> · ijro muddati <b>{topic.slaDays} kun</b>
+              </span>
+            ) : (
+              <>
+                <span>
+                  Yo'naltirish: <b>{chosenUnit ?? (targetOrgUnitId ? "qo'lda tanlangan bo'linma" : (suggestion?.name ?? 'qoida topilmadi — supervisor yo\'naltiradi'))}</b>
+                  {' · '}ijro muddati <b>{topic.slaDays} kun</b>
+                </span>
+                <Button type="link" size="small" onClick={() => setPickUnit((v) => !v)}>
+                  {pickUnit ? 'Yashirish' : "O'zgartirish"}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+        {/* Maydon doim formada turadi (yashirin bo'lsa ham): aks holda jadval tavsiyasi yuborilmay qoladi */}
+        <Form.Item
+          name="targetOrgUnitId"
+          label="Mas'ul bo'linma"
+          hidden={!pickUnit || !!closeImmediately || isCorruption}
+          extra={suggestion ? `Jadval tavsiyasi: ${suggestion.name}` : undefined}
+        >
+          <TreeSelect
+            allowClear
+            showSearch
+            treeNodeFilterProp="title"
+            treeData={treeData}
+            treeDefaultExpandedKeys={suggestion ? [suggestion.id] : undefined}
+            placeholder="Bo'linmani tanlang"
+          />
+        </Form.Item>
+
+        <Form.Item name="description" label="Tavsif" rules={[{ required: true, message: 'Tavsifni kiriting' }]}>
+          <Input.TextArea
+            rows={4}
+            maxLength={5000}
+            showCount
+            placeholder="Fuqaro so'zlari bilan: qaysi mulk yoki ariza, qachon murojaat qilgan, nima kutmoqda"
+          />
+        </Form.Item>
+
         <Row gutter={12}>
           <Col xs={24} md={12}>
-            <Form.Item name="citizenPhone" label="Telefon raqami">
-              <Input placeholder="+998 90 123 45 67" />
+            <Form.Item name="citizenPhone" label="Fuqaro telefoni">
+              <Input className="mono" inputMode="tel" placeholder="+998 90 123 45 67" />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
             <Form.Item name="citizenName" label="Fuqaro F.I.Sh.">
               <Input />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={8}>
-            <Form.Item name="type" label="Murojaat turi" rules={[{ required: true }]}>
-              <Select options={Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={16}>
-            <Form.Item name="categoryId" label="Toifa">
-              <Select
-                allowClear
-                showSearch
-                optionFilterProp="label"
-                loading={reference.loading}
-                options={categories.map((c) => ({ value: c.id, label: c.nameUz }))}
-              />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
@@ -139,75 +238,33 @@ export default function TicketForm({ form, pbxCallId, onCreated }: {
               />
             </Form.Item>
           </Col>
-          <Col span={24}>
-            <Form.Item name="subject" label="Mavzu" rules={[{ required: true, message: 'Mavzuni kiriting' }, { max: 200 }]}>
-              <Input />
-            </Form.Item>
-          </Col>
-          <Col span={24}>
-            <Form.Item name="description" label="Mazmuni" rules={[{ required: true, message: 'Mazmunini kiriting' }]}>
-              <Input.TextArea rows={4} maxLength={5000} showCount />
-            </Form.Item>
-          </Col>
           <Col xs={24} md={12}>
             <Form.Item name="cadastreNumber" label="Kadastr raqami">
-              <Input />
+              <Input className="mono" />
             </Form.Item>
           </Col>
           <Col xs={24} md={12}>
             <Form.Item name="applicationNumber" label="Ariza raqami">
-              <Input />
+              <Input className="mono" />
             </Form.Item>
           </Col>
         </Row>
 
-        {isCorruption ? (
-          <>
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginBottom: 16 }}
-              message="Maxfiy murojaat"
-              description="Korrupsiya xabari avtomatik ravishda korrupsiyaga qarshi kurash bo'limiga yuboriladi va saqlangandan keyin sizga ko'rinmaydi."
-            />
-            <Form.Item name="isAnonymous" label="Fuqaro ma'lumotlarini yashirish (anonim)" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          </>
-        ) : (
-          <>
-            {CLOSABLE.includes(type) && (
-              <Form.Item name="closeImmediately" valuePropName="checked">
-                <Checkbox>Ma'lumot berildi — murojaatni darhol yopish</Checkbox>
-              </Form.Item>
-            )}
-            {closeImmediately && CLOSABLE.includes(type) ? (
-              <Form.Item name="answer" label="Berilgan ma'lumot" rules={[{ required: true, message: "Qanday ma'lumot berilganini yozing" }]}>
-                <Input.TextArea rows={2} />
-              </Form.Item>
-            ) : (
-              <Form.Item
-                name="targetOrgUnitId"
-                label="Mas'ul bo'linma"
-                extra={suggestion ? `Yo'naltirish jadvali tavsiyasi: ${suggestion.name}` : "Bo'sh qoldirilsa, murojaat \"Yangi\" holatida qoladi"}
-              >
-                <TreeSelect
-                  allowClear
-                  showSearch
-                  treeNodeFilterProp="title"
-                  treeData={treeData}
-                  treeDefaultExpandedKeys={suggestion ? [suggestion.id] : undefined}
-                  placeholder="Bo'linmani tanlang"
-                />
-              </Form.Item>
-            )}
-          </>
+        {!isCorruption && (
+          <Form.Item
+            name="closeImmediately"
+            valuePropName="checked"
+            extra={closable ? undefined : "Joyida faqat ma'lumot so'rash va minnatdorchilik murojaatlari yopiladi"}
+          >
+            <Checkbox disabled={!closable}>Joyida hal qilindi — murojaat darhol yopiladi</Checkbox>
+          </Form.Item>
         )}
-
-        <Button type="primary" htmlType="submit" loading={saving}>
-          Saqlash
-        </Button>
-      </Form>
-    </Card>
+        {closeImmediately && closable && (
+          <Form.Item name="answer" label="Berilgan ma'lumot" rules={[{ required: true, message: "Qanday ma'lumot berilganini yozing" }]}>
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        )}
+      </Card>
+    </Form>
   );
 }

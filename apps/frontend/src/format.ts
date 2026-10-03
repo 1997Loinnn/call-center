@@ -13,7 +13,13 @@ export function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-export const isOverdue = (dueAt: string | null, status: TicketStatus): boolean =>
+/** +998901234567 → "+998 90 123 45 67"; boshqa ko'rinishdagi raqam o'zgarishsiz qaytadi. */
+export function formatPhone(value: string): string {
+  const m = /^\+?998(\d{2})(\d{3})(\d{2})(\d{2})$/.exec(value.replace(/[\s()-]/g, ''));
+  return m ? `+998 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : value;
+}
+
+export const isOverdue =(dueAt: string | null, status: TicketStatus): boolean =>
   !!dueAt && status !== 'CLOSED' && dayjs(dueAt).isBefore(dayjs());
 
 export const formatNumber = (value: number): string => new Intl.NumberFormat('uz-UZ').format(value);

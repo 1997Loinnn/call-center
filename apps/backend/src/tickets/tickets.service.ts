@@ -138,11 +138,21 @@ export class TicketsService {
 
   /** Yo'naltirish jadvali bo'yicha mas'ul bo'linmani taklif qiladi (F-CRM-03). */
   async suggestRoute(ctx: RoutingContext) {
-    const rules = await this.prisma.routingRule.findMany({
-      where: { isActive: true, targetOrgUnit: { isActive: true } },
-      include: { targetOrgUnit: { select: { id: true, name: true } } },
-    });
-    return pickBestRule(rules, ctx)?.targetOrgUnit ?? null;
+    const [rules, categoryId] = await Promise.all([
+      this.prisma.routingRule.findMany({
+        where: { isActive: true, targetOrgUnit: { isActive: true } },
+        include: { targetOrgUnit: { select: { id: true, name: true } } },
+      }),
+      this.routingCategoryId(ctx.categoryId),
+    ]);
+    return pickBestRule(rules, { ...ctx, categoryId })?.targetOrgUnit ?? null;
+  }
+
+  /** Mavzu (quyi toifa) tanlansa, yo'naltirish jadvali uning ota toifasi bo'yicha qidiriladi. */
+  private async routingCategoryId(categoryId?: number | null): Promise<number | null | undefined> {
+    if (!categoryId) return categoryId;
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId }, select: { parentId: true } });
+    return category?.parentId ?? categoryId;
   }
 
   // ───────────── Yaratish ─────────────

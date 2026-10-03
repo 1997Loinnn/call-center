@@ -14,7 +14,7 @@ export class ReferenceController {
   categories() {
     return this.prisma.category.findMany({
       where: { isActive: true },
-      select: { id: true, parentId: true, code: true, nameUz: true, nameRu: true, slaDays: true, isConfidential: true },
+      select: { id: true, parentId: true, code: true, nameUz: true, nameRu: true, slaDays: true, isConfidential: true, sortOrder: true },
       orderBy: [{ sortOrder: 'asc' }, { nameUz: 'asc' }],
     });
   }

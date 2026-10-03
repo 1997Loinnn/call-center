@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { api, errorMessage } from '../../api/client';
 import type { AgentStatus, TelephonyInfo } from '../../api/types';
 import { AGENT_STATUS_META } from '../../constants';
-import { formatDuration } from '../../format';
+import { formatDuration, formatPhone } from '../../format';
 import { useSocketEvent } from '../../realtime/socket';
 import { TONE, type Tone } from '../../theme';
 import MicSettingsPanel from './MicSettingsPanel';
@@ -87,11 +87,11 @@ export default function SoftphoneButton() {
   if (call?.phase === 'ringing') {
     tone = 'blue';
     title = "Kiruvchi qo'ng'iroq";
-    sub = call.number;
+    sub = formatPhone(call.number);
   } else if (call?.phase === 'talking') {
     tone = 'blue';
     title = `Suhbatda · ${formatDuration(Math.max(0, Math.floor((now - call.since) / 1000)))}`;
-    sub = call.number;
+    sub = formatPhone(call.number);
   }
   const t = TONE[tone];
 

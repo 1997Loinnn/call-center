@@ -12,9 +12,16 @@ import { CitizensService } from './citizens.service';
 export class CitizensController {
   constructor(private readonly citizens: CitizensService) {}
 
+  /** Fuqaro kartasi telefon raqami yoki murojaat raqami (?ticket=) bo'yicha. */
   @Get('card')
   @RequirePermissions(Permission.CitizensRead)
-  card(@Query('phone') phone: string | undefined, @CurrentUser() user: AuthUser, @Req() req: Request) {
+  card(
+    @Query('phone') phone: string | undefined,
+    @Query('ticket') ticket: string | undefined,
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+  ) {
+    if (ticket?.trim()) return this.citizens.cardByTicketNumber(ticket, user, requestMeta(req));
     if (!phone || phone.replace(/\D/g, '').length < 3) throw new BadRequestException('Telefon raqami kiritilmagan');
     return this.citizens.cardByPhone(phone, user, requestMeta(req));
   }

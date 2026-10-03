@@ -1,9 +1,10 @@
-import { Alert, DatePicker, Input, Select, Table, Tag } from 'antd';
+import { Alert, DatePicker, Input, Select, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { CallDirection, CallResult, CallRow, Page } from '../api/types';
+import ToneTag from '../components/ToneTag';
 import { CALL_RESULT_META, DIRECTION_LABELS } from '../constants';
 import { formatDateTime, formatDuration } from '../format';
 import { useAsync } from '../hooks/useAsync';
@@ -29,7 +30,7 @@ const columns: ColumnsType<CallRow> = [
     title: 'Natija',
     dataIndex: 'result',
     width: 150,
-    render: (r: CallResult | null) => (r ? <Tag color={CALL_RESULT_META[r].color}>{CALL_RESULT_META[r].label}</Tag> : '—'),
+    render: (r: CallResult | null) => (r ? <ToneTag tone={CALL_RESULT_META[r].tone}>{CALL_RESULT_META[r].label}</ToneTag> : '—'),
   },
   { title: 'Murojaat', render: (_, c) => (c.ticket ? <Link to={`/tickets/${c.ticket.id}`}>{c.ticket.number}</Link> : '—') },
 ];

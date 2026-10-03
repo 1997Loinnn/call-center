@@ -1,4 +1,5 @@
 import type { AgentStatus, CallDirection, CallResult, DataScope, TicketChannel, TicketStatus, TicketType } from './api/types';
+import type { Tone } from './theme';
 
 // Backend ruxsatlari bilan bir xil (apps/backend/src/common/permissions.ts)
 export const P = {
@@ -45,13 +46,13 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [P.AuditRead]: 'Audit jurnali',
 };
 
-export const STATUS_META: Record<TicketStatus, { label: string; color: string }> = {
-  NEW: { label: 'Yangi', color: 'blue' },
-  ROUTED: { label: "Yo'naltirildi", color: 'geekblue' },
-  IN_PROGRESS: { label: 'Ijroda', color: 'gold' },
-  ANSWERED: { label: 'Javob tayyorlandi', color: 'cyan' },
-  CLOSED: { label: 'Yopildi', color: 'green' },
-  RETURNED: { label: 'Qaytarildi', color: 'volcano' },
+export const STATUS_META: Record<TicketStatus, { label: string; tone: Tone }> = {
+  NEW: { label: 'Yangi', tone: 'blue' },
+  ROUTED: { label: "Yo'naltirildi", tone: 'teal' },
+  IN_PROGRESS: { label: 'Ijroda', tone: 'amber' },
+  ANSWERED: { label: 'Javob tayyorlandi', tone: 'violet' },
+  CLOSED: { label: 'Yopildi', tone: 'green' },
+  RETURNED: { label: 'Qaytarildi', tone: 'pink' },
 };
 
 export const TYPE_LABELS: Record<TicketType, string> = {
@@ -70,14 +71,14 @@ export const CHANNEL_LABELS: Record<TicketChannel, string> = {
   EMAIL: 'Email',
 };
 
-export const CALL_RESULT_META: Record<CallResult, { label: string; color: string }> = {
-  ANSWERED: { label: 'Javob berildi', color: 'green' },
-  ABANDONED: { label: "Kutib uzildi", color: 'red' },
-  NO_ANSWER: { label: 'Javobsiz', color: 'orange' },
-  BUSY: { label: 'Band', color: 'orange' },
-  FAILED: { label: 'Xato', color: 'red' },
-  IVR_ONLY: { label: 'IVR da yakunlandi', color: 'default' },
-  VOICEMAIL: { label: 'Ovozli xabar', color: 'purple' },
+export const CALL_RESULT_META: Record<CallResult, { label: string; tone: Tone }> = {
+  ANSWERED: { label: 'Javob berildi', tone: 'green' },
+  ABANDONED: { label: 'Kutib uzildi', tone: 'red' },
+  NO_ANSWER: { label: 'Javobsiz', tone: 'red' },
+  BUSY: { label: 'Band', tone: 'grey' },
+  FAILED: { label: 'Xato', tone: 'red' },
+  IVR_ONLY: { label: 'IVR da yakunlandi', tone: 'teal' },
+  VOICEMAIL: { label: 'Ovozli xabar', tone: 'violet' },
 };
 
 export const DIRECTION_LABELS: Record<CallDirection, string> = {
@@ -93,12 +94,12 @@ export const SCOPE_LABELS: Record<DataScope, string> = {
   ALL: 'Butun tizim',
 };
 
-export const AGENT_STATUS_META: Record<AgentStatus, { label: string; color: string }> = {
-  READY: { label: 'Tayyor', color: 'green' },
-  ON_CALL: { label: 'Suhbatda', color: 'blue' },
-  WRAP_UP: { label: "Qo'ng'iroqdan keyingi ish", color: 'gold' },
-  BREAK: { label: 'Tanaffus', color: 'orange' },
-  OFFLINE: { label: 'Offline', color: 'default' },
+export const AGENT_STATUS_META: Record<AgentStatus, { label: string; tone: Tone }> = {
+  READY: { label: 'Tayyor', tone: 'green' },
+  ON_CALL: { label: 'Suhbatda', tone: 'blue' },
+  WRAP_UP: { label: "Qo'ng'iroqdan keyingi ish", tone: 'teal' },
+  BREAK: { label: 'Tanaffus', tone: 'amber' },
+  OFFLINE: { label: 'Offline', tone: 'grey' },
 };
 
 export const EVENT_LABELS: Record<string, string> = {

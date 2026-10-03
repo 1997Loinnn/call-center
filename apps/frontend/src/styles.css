@@ -1,3 +1,19 @@
+:root {
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --brand: #0b6b6b;
+  --brand-dark: #084f4f;
+  --sider: #0f1e2b;
+  --sider-raised: #162838;
+  --sider-line: #1e3346;
+  --sider-text: #c3ced9;
+  --sider-muted: #93a3b5;
+  --ink: #15191f;
+  --ink-2: #4b5563;
+  --muted: #5f6773;
+  --line: #e2e5ea;
+  --bg: #f3f4f6;
+}
+
 html,
 body,
 #root {
@@ -6,8 +22,25 @@ body,
 }
 
 body {
-  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Telefon raqami, taymer, murojaat raqami va ko'rsatkichlar: raqamlar bir xil kenglikda */
+.mono,
+.mono input {
+  font-family: var(--mono);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
 }
 
 .page-header {
@@ -35,7 +68,517 @@ body {
   cursor: pointer;
 }
 
-/* Jadvaldagi raqamlar ustun bo'yicha tekislanadi */
-.num {
-  font-variant-numeric: tabular-nums;
+/* Holat belgisi: fon + nuqta + yozuv */
+.tone-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tone-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ---------- Yon menyu ---------- */
+.app-sider.ant-layout-sider {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.app-sider .ant-layout-sider-children {
+  display: flex;
+  flex-direction: column;
+}
+
+.sider-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 18px 14px;
+}
+
+.ant-layout-sider-collapsed .sider-brand {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sider-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 18px;
+}
+
+.sider-brand-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.sider-brand-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.sider-brand-sub {
+  color: var(--sider-muted);
+  font-size: 12px;
+}
+
+.sider-menu {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sider-menu .ant-menu-dark .ant-menu-submenu-title {
+  font-weight: 600;
+}
+
+.sider-menu .ant-menu-dark .ant-menu-sub .ant-menu-item {
+  padding-right: 12px;
+}
+
+/* Uzun nom «reja» belgisini siqib chiqarmasin: nom qisqaradi, to'liq nomi title'da */
+.menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planned-tag {
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid #2b4a63;
+  border-radius: 6px;
+  color: var(--sider-muted);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.sider-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 12px 12px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--sider-raised);
+}
+
+.ant-layout-sider-collapsed .sider-user {
+  flex-direction: column;
+  margin-inline: 8px;
+  padding: 8px 0;
+}
+
+.sider-avatar.ant-avatar {
+  flex-shrink: 0;
+  background: #2b4a63;
+  font-weight: 600;
+}
+
+.sider-user-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.sider-user-name {
+  overflow: hidden;
+  color: #fff;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sider-user-sub {
+  overflow: hidden;
+  color: var(--sider-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sider-logout.ant-btn {
+  color: #f3a6a6;
+}
+
+/* ---------- Yuqori panel ---------- */
+.topbar.ant-layout-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  height: auto;
+  min-height: 64px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--line);
+  line-height: 1.4;
+}
+
+.kpi-strip {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kpi-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 6px;
+  border-radius: 10px;
+  background: #f6f7f9;
+}
+
+.kpi-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.kpi-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.kpi-value {
+  font-family: var(--mono);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.kpi-label {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.icon-btn.ant-btn {
+  width: 44px;
+  height: 44px;
+}
+
+.app-content {
+  padding: 20px;
+}
+
+/* ---------- Softfon ---------- */
+.softphone-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px 0 6px;
+  border: 1px solid;
+  border-radius: 10px;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.softphone-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+}
+
+.softphone-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.softphone-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.softphone-sub {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.softphone-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 330px;
+}
+
+.softphone-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.softphone-panel-title {
+  font-weight: 600;
+}
+
+.seg-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dial-row {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-call.ant-btn-primary:not(:disabled) {
+  background: #15803d;
+}
+
+.dialpad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.dialpad .ant-btn {
+  font-size: 16px;
+}
+
+.menu-row.ant-btn {
+  justify-content: flex-start;
+  height: 44px;
+}
+
+.menu-row.ant-btn > span:nth-child(2) {
+  flex: 1;
+  text-align: left;
+}
+
+.panel-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.mic-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  font-size: 13px;
+}
+
+.panel-section-title {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #eef0f3;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mic-test {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f1f7f7;
+  color: var(--brand-dark);
+  font-size: 12px;
+}
+
+.mic-meter {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #d7e9e7;
+}
+
+.mic-meter > span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+  transition: width 80ms linear;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* ---------- Bildirishnomalar ---------- */
+.bell-panel {
+  width: 340px;
+}
+
+.bell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.bell-list {
+  max-height: 360px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.bell-item {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 6px;
+  border: 0;
+  border-top: 1px solid #eef0f3;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bell-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #1d4ed8;
+}
+
+.bell-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bell-title {
+  font-size: 13px;
+}
+
+.bell-body,
+.bell-time {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* Tor ekran: menyu kontent ustidan ochiladi, ochish tugmasi yuqori panelda */
+.app-sider.ant-layout-sider-below {
+  position: fixed;
+  left: 0;
+  z-index: 100;
+}
+
+@media (max-width: 991px) {
+  .topbar.ant-layout-header {
+    padding-left: 60px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-content {
+    padding: 16px;
+  }
+
+  .topbar.ant-layout-header {
+    gap: 8px;
+    padding: 8px 12px 8px 60px;
+  }
+
+  .topbar-actions {
+    order: 1;
+    width: 100%;
+  }
+
+  .kpi-strip {
+    order: 2;
+    flex: 1 1 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .kpi-item {
+    flex-shrink: 0;
+  }
+
+  .topbar-lang,
+  .softphone-title {
+    display: none !important;
+  }
+
+  .softphone-panel,
+  .bell-panel {
+    width: min(330px, calc(100vw - 48px));
+  }
 }

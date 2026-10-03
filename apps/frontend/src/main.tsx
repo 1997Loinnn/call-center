@@ -1,6 +1,8 @@
 import '@fontsource/ibm-plex-sans/400.css';
 import '@fontsource/ibm-plex-sans/500.css';
 import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/500.css';
 import { App as AntApp, ConfigProvider } from 'antd';
 import uzUZ from 'antd/locale/uz_UZ';
 import dayjs from 'dayjs';

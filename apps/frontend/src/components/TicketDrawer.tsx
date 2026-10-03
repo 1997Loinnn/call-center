@@ -7,6 +7,7 @@ import { useAuth } from '../auth/AuthContext';
 import { CHANNEL_LABELS, EVENT_LABELS, P, STATUS_META, TYPE_LABELS } from '../constants';
 import { formatDateTime, isOverdue } from '../format';
 import { useAsync } from '../hooks/useAsync';
+import { TONE } from '../theme';
 import ActionModal, { type ActionKind } from './ActionModal';
 import StatusTag from './StatusTag';
 
@@ -126,7 +127,7 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
             <Typography.Title level={5}>Tarix</Typography.Title>
             <Timeline
               items={t.events.map((e) => ({
-                color: e.toStatus ? STATUS_META[e.toStatus].color : 'gray',
+                color: e.toStatus ? TONE[STATUS_META[e.toStatus].tone].dot : TONE.grey.dot,
                 children: (
                   <>
                     <Typography.Text strong>{EVENT_LABELS[e.type] ?? e.type}</Typography.Text>

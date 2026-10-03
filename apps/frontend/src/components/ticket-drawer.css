@@ -1,0 +1,180 @@
+/* ---------- Murojaat tafsiloti (prototip: Murojaatlar.dc.html, o'ng panel) ---------- */
+.td-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.td-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.td-person-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.td-call.ant-btn {
+  border-color: #bfe3cb;
+  background: #f3fbf6;
+  color: #14532d;
+}
+
+.td-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.td-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.td-section + .td-section {
+  padding-top: 18px;
+  border-top: 1px solid #eef0f3;
+}
+
+.td-section h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.td-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .td-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.td-grid dt,
+.td-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.td-grid dd {
+  margin: 2px 0 0;
+  font-weight: 500;
+}
+
+.td-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.td-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.td-topic {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.td-topic-no {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: #e3f1f0;
+  color: #084f4f;
+  font-size: 12px;
+}
+
+.td-topic-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.td-muted {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.td-danger {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.td-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.td-answer {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
+.td-answer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.td-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.td-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.td-list-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.td-note {
+  font-size: 12px;
+}

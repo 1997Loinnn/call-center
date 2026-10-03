@@ -1,0 +1,138 @@
+/* ---------- Murojaatlar (prototip: Murojaatlar.dc.html) ---------- */
+.tickets-header {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.page-sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tickets-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.tickets-filters {
+  margin-bottom: 14px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filter-field > span:first-child {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.filter-field .ant-select,
+.filter-field .ant-picker {
+  width: 100%;
+}
+
+.filter-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.status-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.status-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.status-tab:hover {
+  border-color: #a9d4d1;
+}
+
+.status-tab.is-danger {
+  border-color: #f1c4c4;
+  color: #b91c1c;
+}
+
+.status-tab.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.status-tab-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.status-tab.is-active .status-tab-count {
+  color: #c9d1db;
+}
+
+.tickets-table .ant-table-wrapper .ant-table-pagination {
+  padding: 0 16px;
+}
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.cell-strong {
+  font-weight: 500;
+}
+
+.cell-sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cell-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-danger {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.cell-sub-danger {
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.ant-table-tbody > tr.is-selected-row > td {
+  background: #f1f7f7;
+}

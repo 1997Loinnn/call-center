@@ -68,8 +68,12 @@ export interface TicketEvent {
   orgUnit: Named | null;
 }
 
-export interface TicketDetail extends Omit<TicketListItem, 'assignedOrgUnit'> {
+export interface TicketDetail extends Omit<TicketListItem, 'assignedOrgUnit' | 'category' | 'citizen'> {
   description: string;
+  updatedAt: string;
+  category: { id: number; nameUz: string; slaDays: number; sortOrder: number; parent: { id: number; nameUz: string } | null } | null;
+  citizen: { id: number; phone: string; fullName: string | null; address: string | null } | null;
+  attachments: { id: number; fileName: string; mimeType: string; sizeBytes: number; createdAt: string }[];
   cadastreNumber: string | null;
   applicationNumber: string | null;
   answer: string | null;
@@ -80,6 +84,12 @@ export interface TicketDetail extends Omit<TicketListItem, 'assignedOrgUnit'> {
   assignedOrgUnit: (Named & { path: string }) | null;
   events: TicketEvent[];
   calls: { id: number; startedAt: string; talkSeconds: number; result: CallResult | null }[];
+}
+
+export interface TicketCounts {
+  total: number;
+  byStatus: Partial<Record<TicketStatus, number>>;
+  overdue: number;
 }
 
 export interface Category {

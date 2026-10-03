@@ -1,6 +1,6 @@
 import { TicketChannel, TicketStatus, TicketType } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsDate, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PageQueryDto } from '../common/http';
 
 export class CreateTicketDto {
@@ -102,6 +102,21 @@ export class TicketsQueryDto extends PageQueryDto {
   @Type(() => Number)
   @IsInt()
   assignedOrgUnitId?: number;
+
+  @IsOptional()
+  @IsEnum(TicketChannel)
+  channel?: TicketChannel;
+
+  /** Qabul qilingan sana oralig'i (ISO 8601) */
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  createdFrom?: Date;
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  createdTo?: Date;
 
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)

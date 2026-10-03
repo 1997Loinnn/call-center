@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, ParseIntPipe, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { AuthUser } from '../common/auth-user';
@@ -25,6 +25,21 @@ export class TicketsController {
   @RequirePermissions(Permission.TicketsRead)
   list(@CurrentUser() user: AuthUser, @Query() query: TicketsQueryDto) {
     return this.tickets.list(user, query);
+  }
+
+  /** Holat tablari uchun sanoq (":id" dan oldin turishi shart) */
+  @Get('counts')
+  @RequirePermissions(Permission.TicketsRead)
+  counts(@CurrentUser() user: AuthUser, @Query() query: TicketsQueryDto) {
+    return this.tickets.counts(user, query);
+  }
+
+  @Get('export')
+  @RequirePermissions(Permission.TicketsRead)
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="murojaatlar.csv"')
+  exportCsv(@CurrentUser() user: AuthUser, @Query() query: TicketsQueryDto, @Req() req: Request) {
+    return this.tickets.exportCsv(user, query, requestMeta(req));
   }
 
   @Get('routing-suggestion')

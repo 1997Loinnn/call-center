@@ -16,6 +16,7 @@ import { normalizePhone } from '../common/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { pickBestRule, RoutingContext } from './routing';
+import { ticketsToCsv } from './ticket-export';
 import {
   canCloseImmediately,
   canTransition,
@@ -46,7 +47,7 @@ const LIST_SELECT = {
 } satisfies Prisma.TicketSelect;
 
 const DETAIL_INCLUDE = {
-  category: { select: { id: true, nameUz: true, slaDays: true } },
+  category: { select: { id: true, nameUz: true, slaDays: true, sortOrder: true, parent: { select: { id: true, nameUz: true } } } },
   region: { select: { id: true, nameUz: true } },
   district: { select: { id: true, nameUz: true } },
   citizen: { select: { id: true, phone: true, fullName: true, address: true } },
@@ -61,7 +62,12 @@ const DETAIL_INCLUDE = {
   calls: { select: { id: true, startedAt: true, talkSeconds: true, result: true } },
 } satisfies Prisma.TicketInclude;
 
-type VisibleTicket = Prisma.TicketGetPayload<{ include: { assignedOrgUnit: { select: { id: true; path: true } } } }>;
+/** Bitta eksportdagi eng ko'p qator: kattaroq hajm hisobotlar moduli orqali. */
+const EXPORT_LIMIT = 10_000;
+
+const overdueWhere = (): Prisma.TicketWhereInput => ({ dueAt: { lt: new Date() }, status: { not: TicketStatus.CLOSED } });
+
+type VisibleTicket =Prisma.TicketGetPayload<{ include: { assignedOrgUnit: { select: { id: true; path: true } } } }>;
 
 interface TransitionOptions {
   allowedFrom: TicketStatus[];
@@ -87,19 +93,27 @@ export class TicketsService {
 
   // ───────────── O'qish ─────────────
 
-  async list(user: AuthUser, query: TicketsQueryDto): Promise<Page<Prisma.TicketGetPayload<{ select: typeof LIST_SELECT }>>> {
+  /** Ro'yxat, sanoq va eksport uchun umumiy filtr. withStatus=false: holat tablarining sanog'i uchun. */
+  private listWhere(user: AuthUser, query: TicketsQueryDto, withStatus = true): Prisma.TicketWhereInput {
     const and: Prisma.TicketWhereInput[] = [
       ticketScopeWhere(user),
       {
-        status: query.status,
+        status: withStatus ? query.status : undefined,
         type: query.type,
-        categoryId: query.categoryId,
+        channel: query.channel,
         regionId: query.regionId,
         assignedOrgUnitId: query.assignedOrgUnitId,
       },
     ];
-    if (query.overdue) {
-      and.push({ dueAt: { lt: new Date() }, status: { not: TicketStatus.CLOSED } });
+    // Toifa tanlansa, uning mavzulari (quyi bandlari) bo'yicha murojaatlar ham kiradi
+    if (query.categoryId) {
+      and.push({ OR: [{ categoryId: query.categoryId }, { category: { parentId: query.categoryId } }] });
+    }
+    if (query.createdFrom || query.createdTo) {
+      and.push({ createdAt: { gte: query.createdFrom, lte: query.createdTo } });
+    }
+    if (withStatus && query.overdue) {
+      and.push(overdueWhere());
     }
     if (query.search) {
       const search = query.search.trim();
@@ -112,8 +126,11 @@ export class TicketsService {
         ],
       });
     }
+    return { AND: and };
+  }
 
-    const where: Prisma.TicketWhereInput = { AND: and };
+  async list(user: AuthUser, query: TicketsQueryDto): Promise<Page<Prisma.TicketGetPayload<{ select: typeof LIST_SELECT }>>> {
+    const where = this.listWhere(user, query);
     const [items, total] = await this.prisma.$transaction([
       this.prisma.ticket.findMany({ where, select: LIST_SELECT, orderBy: { createdAt: 'desc' }, ...pageArgs(query) }),
       this.prisma.ticket.count({ where }),
@@ -124,6 +141,41 @@ export class TicketsService {
       page: query.page,
       pageSize: query.pageSize,
     };
+  }
+
+  /** Holat tablari uchun sanoq: joriy filtrlar bo'yicha, holat tanlovisiz. */
+  async counts(user: AuthUser, query: TicketsQueryDto) {
+    const where = this.listWhere(user, query, false);
+    const [groups, overdue] = await Promise.all([
+      this.prisma.ticket.groupBy({ by: ['status'], where, _count: { _all: true } }),
+      this.prisma.ticket.count({ where: { AND: [where, overdueWhere()] } }),
+    ]);
+    const byStatus: Partial<Record<TicketStatus, number>> = {};
+    let total = 0;
+    for (const group of groups) {
+      byStatus[group.status] = group._count._all;
+      total += group._count._all;
+    }
+    return { total, byStatus, overdue };
+  }
+
+  /** CSV eksport (joriy filtr, ko'pi bilan EXPORT_LIMIT qator). Shaxsiy ma'lumot chiqadi — audit jurnaliga yoziladi. */
+  async exportCsv(user: AuthUser, query: TicketsQueryDto, meta: RequestMeta): Promise<string> {
+    const rows = await this.prisma.ticket.findMany({
+      where: this.listWhere(user, query),
+      select: LIST_SELECT,
+      orderBy: { createdAt: 'desc' },
+      take: EXPORT_LIMIT,
+    });
+    await this.audit.log({
+      actorId: user.id,
+      action: 'ticket.export',
+      entityType: 'Ticket',
+      entityId: 'list',
+      details: { rows: rows.length, filters: { ...query, page: undefined, pageSize: undefined } },
+      ...meta,
+    });
+    return ticketsToCsv(rows.map((ticket) => this.hideAnonymous(user, ticket)));
   }
 
   async get(user: AuthUser, id: number, meta: RequestMeta) {

@@ -43,6 +43,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Faqat ekran o'quvchi uchun (masalan, ikonka tugmali ustun sarlavhasi) */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .page-header {
   display: flex;
   align-items: center;

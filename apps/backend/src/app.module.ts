@@ -12,6 +12,7 @@ import { HealthModule } from './health/health.module';
 import { OrgUnitsModule } from './org-units/org-units.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealtimeModule } from './realtime/realtime.module';
+import { RecordingsModule } from './recordings/recordings.module';
 import { ReferenceModule } from './reference/reference.module';
 import { ReportsModule } from './reports/reports.module';
 import { TelephonyModule } from './telephony/telephony.module';
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     CitizensModule,
     TicketsModule,
     CallsModule,
+    RecordingsModule,
     TelephonyModule,
     ReportsModule,
     HealthModule,

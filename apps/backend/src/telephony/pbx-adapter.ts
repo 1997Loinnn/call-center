@@ -34,3 +34,6 @@ export interface PbxAdapter {
 }
 
 export const PBX_ADAPTER = Symbol('PBX_ADAPTER');
+
+/** Mock adapter CDR'idagi yozuv belgisi: yozuvlar xizmati uning o'rniga sintetik WAV yaratadi. */
+export const MOCK_RECORDING_FILE = 'mock:synthetic';

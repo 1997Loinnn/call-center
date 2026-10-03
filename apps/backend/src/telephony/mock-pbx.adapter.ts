@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { CallDirection, CallResult } from '@prisma/client';
 import { EventEmitter } from 'node:events';
-import { PbxAdapter, PbxEvent } from './pbx-adapter';
+import { MOCK_RECORDING_FILE, PbxAdapter, PbxEvent } from './pbx-adapter';
 
 const RING_SECONDS = 3;
 
@@ -55,6 +55,7 @@ export class MockPbxAdapter implements PbxAdapter {
           answeredAt,
           endedAt,
           result: CallResult.ANSWERED,
+          recordingFile: MOCK_RECORDING_FILE,
         },
       });
     }, (RING_SECONDS + talkSeconds) * 1000).unref();

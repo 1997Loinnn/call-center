@@ -11,6 +11,7 @@ import { AuthUser } from '../common/auth-user';
 import { normalizePhone } from '../common/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { RecordingsService } from '../recordings/recordings.service';
 import { MockPbxAdapter } from './mock-pbx.adapter';
 import { PBX_ADAPTER, PbxAdapter, PbxCdr, PbxEvent } from './pbx-adapter';
 
@@ -24,6 +25,7 @@ export class TelephonyService implements OnModuleInit, OnModuleDestroy {
     @Inject(PBX_ADAPTER) private readonly pbx: PbxAdapter,
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
+    private readonly recordings: RecordingsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -118,12 +120,16 @@ export class TelephonyService implements OnModuleInit, OnModuleDestroy {
       talkSeconds: cdr.answeredAt ? seconds(cdr.answeredAt, cdr.endedAt) : 0,
       result: cdr.result,
     };
-    await this.prisma.call.upsert({
+    const call = await this.prisma.call.upsert({
       where: { pbxCallId: cdr.pbxCallId },
       create: { pbxCallId: cdr.pbxCallId, ...data },
       update: data,
+      select: { id: true },
     });
-    // TODO(F-REC-02): cdr.recordingFile ni UCM'dan NAS (MinIO) ga ko'chirish va Recording yozuvini yaratish
+    // Yozuvni olib bo'lmasa ham CDR saqlanib qolishi kerak
+    await this.recordings
+      .attach(call.id, cdr.pbxCallId, cdr.recordingFile, data.talkSeconds)
+      .catch((err) => this.logger.error(`Yozuv saqlanmadi: ${cdr.pbxCallId}`, err instanceof Error ? err.stack : String(err)));
     return agentId;
   }
 

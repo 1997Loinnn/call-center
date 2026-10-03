@@ -4,11 +4,6 @@
   align-items: flex-end;
 }
 
-.page-sub {
-  color: var(--muted);
-  font-size: 13px;
-}
-
 .tickets-actions {
   display: flex;
   flex-wrap: wrap;
@@ -99,40 +94,4 @@
 
 .tickets-table .ant-table-wrapper .ant-table-pagination {
   padding: 0 16px;
-}
-
-.cell-stack {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  line-height: 1.35;
-}
-
-.cell-strong {
-  font-weight: 500;
-}
-
-.cell-sub {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.cell-ellipsis {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cell-danger {
-  color: #b91c1c;
-  font-weight: 600;
-}
-
-.cell-sub-danger {
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.ant-table-tbody > tr.is-selected-row > td {
-  background: #f1f7f7;
 }

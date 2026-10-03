@@ -62,8 +62,11 @@ services:
       UCM_API_USER: ${UCM_API_USER:-}
       UCM_API_PASSWORD: ${UCM_API_PASSWORD:-}
       RECORDING_RETENTION_DAYS: ${RECORDING_RETENTION_DAYS:-90}
+      RECORDINGS_DIR: /data/recordings
     ports:
       - "3000:3000"
+    volumes:
+      - recordings:/data/recordings
 
   frontend:
     build: ./apps/frontend
@@ -77,3 +80,4 @@ services:
 volumes:
   pgdata:
   miniodata:
+  recordings:

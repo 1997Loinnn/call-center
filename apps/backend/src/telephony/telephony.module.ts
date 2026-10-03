@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { RecordingsModule } from '../recordings/recordings.module';
 import { MockPbxAdapter } from './mock-pbx.adapter';
 import { PBX_ADAPTER, PbxAdapter } from './pbx-adapter';
 import { TelephonyController } from './telephony.controller';
@@ -8,7 +9,7 @@ import { TelephonyService } from './telephony.service';
 import { Ucm6510Adapter } from './ucm6510.adapter';
 
 @Module({
-  imports: [RealtimeModule],
+  imports: [RealtimeModule, RecordingsModule],
   controllers: [TelephonyController],
   providers: [
     {

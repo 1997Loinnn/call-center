@@ -1,0 +1,121 @@
+/* ---------- Qo'ng'iroqlar jurnali (prototip: QongiroqlarJurnali.dc.html) ---------- */
+.calls-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.calls-summary li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.calls-summary-value {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.calls-summary-label {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.calls-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.calls-search.ant-input-search {
+  width: 220px;
+}
+
+.cell-time {
+  font-size: 13px;
+}
+
+.call-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.call-dir.is-inbound {
+  color: #1e3a8a;
+}
+
+.call-dir.is-outbound {
+  color: #084f4f;
+}
+
+/* Pleyer */
+.player {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--sider);
+  color: #fff;
+}
+
+.player-main {
+  display: flex;
+  flex: 1 1 320px;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.player-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.player-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-time {
+  flex-shrink: 0;
+  color: var(--sider-text);
+}
+
+.player-progress.ant-slider {
+  margin: 8px 4px 0;
+}
+
+.player-progress .ant-slider-rail {
+  background: #2b4a63;
+}
+
+.player-progress .ant-slider-track {
+  background: #8cc4c1;
+}
+
+.player .player-btn.ant-btn {
+  border-color: #3a5266;
+  background: transparent;
+  color: #fff;
+}
+
+.player .player-btn.ant-btn:hover {
+  border-color: #8cc4c1;
+  color: #fff;
+}

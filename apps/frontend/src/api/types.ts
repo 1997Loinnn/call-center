@@ -149,6 +149,23 @@ export interface CallRow {
   agent: Person | null;
   queue: Named | null;
   ticket: { id: number; number: string } | null;
+  recording: { id: number; durationSeconds: number; deletedAt: string | null } | null;
+  /** Billing: chiquvchi qo'ng'iroq narxi, so'm (Decimal satr ko'rinishida) */
+  charge: { amount: string } | null;
+}
+
+export interface CallsSummary {
+  inbound: { total: number; byResult: Partial<Record<CallResult, number>> };
+  outbound: { total: number; cost: string };
+  avgWaitSeconds: number;
+  avgTalkSeconds: number;
+}
+
+export interface Queue {
+  id: number;
+  pbxNumber: string;
+  name: string;
+  language: string | null;
 }
 
 export interface CitizenCard {

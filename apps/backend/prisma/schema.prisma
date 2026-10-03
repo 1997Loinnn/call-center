@@ -1,0 +1,745 @@
+// Kadastr agentligi "Zamonaviy Call-markaz" yagona axborot tizimi
+// Ma'lumotlar bazasi sxemasi (PostgreSQL 16)
+//
+// Batafsil tavsif va ER-diagramma: docs/database.md
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────────────────────── Tuzilma ─────────────────────────────
+
+enum OrgUnitType {
+  AGENCY           // Kadastr agentligi (daraxt ildizi)
+  CALL_CENTER      // Call-markaz
+  CENTRAL_OFFICE   // Markaziy apparat
+  DEPARTMENT       // Markaziy apparat bo'limi yoki boshqarmasi
+  REGIONAL_OFFICE  // Agentlikning hududiy boshqarmasi
+  CHAMBER          // Davlat kadastrlari palatasi (DKP)
+  CHAMBER_REGIONAL // DKP hududiy boshqarmasi
+  CHAMBER_BRANCH   // DKP tuman (shahar) filiali
+  SUBORDINATE_ORG  // Tasarrufidagi tashkilot
+}
+
+model Region {
+  id     Int     @id @default(autoincrement())
+  soato  String  @unique @db.VarChar(10) // SOATO kodi
+  nameUz String
+  nameRu String?
+
+  districts    District[]
+  orgUnits     OrgUnit[]
+  citizens     Citizen[]
+  tickets      Ticket[]
+  routingRules RoutingRule[]
+
+  @@map("regions")
+}
+
+model District {
+  id       Int     @id @default(autoincrement())
+  regionId Int
+  soato    String  @unique @db.VarChar(10)
+  nameUz   String
+  nameRu   String?
+
+  region       Region        @relation(fields: [regionId], references: [id])
+  orgUnits     OrgUnit[]
+  citizens     Citizen[]
+  tickets      Ticket[]
+  routingRules RoutingRule[]
+
+  @@index([regionId])
+  @@map("districts")
+}
+
+model OrgUnit {
+  id         Int         @id @default(autoincrement())
+  parentId   Int?
+  type       OrgUnitType
+  code       String      @unique @db.VarChar(64) // barqaror kod, masalan "dkp.toshkent-sh"
+  name       String
+  shortName  String?
+  // Materialized path: "/1/5/23/". Bo'linma va uning barcha quyi bo'linmalari
+  // bitta "startsWith" so'rovi bilan topiladi (RBAC ko'rish doirasi shu asosda).
+  path       String
+  depth      Int         @default(0)
+  regionId   Int?
+  districtId Int?
+  phone      String?
+  email      String?
+  address    String?
+  website    String?
+  isActive   Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  parent          OrgUnit?      @relation("OrgTree", fields: [parentId], references: [id])
+  children        OrgUnit[]     @relation("OrgTree")
+  region          Region?       @relation(fields: [regionId], references: [id])
+  district        District?     @relation(fields: [districtId], references: [id])
+  users           User[]
+  assignedTickets Ticket[]      @relation("TicketAssignedOrgUnit")
+  routingRules    RoutingRule[]
+  ticketEvents    TicketEvent[]
+  callCharges     CallCharge[]
+
+  @@index([parentId])
+  @@index([path])
+  @@map("org_units")
+}
+
+// ─────────────────────── Foydalanuvchilar va RBAC ───────────────────────
+
+// Rolning ko'rish doirasi. Foydalanuvchida bir nechta rol bo'lsa, eng kengi olinadi.
+enum DataScope {
+  OWN       // faqat o'zi yaratgan yoki o'ziga biriktirilgan yozuvlar
+  UNIT      // o'z bo'linmasi
+  UNIT_TREE // o'z bo'linmasi va barcha quyi bo'linmalar
+  ALL       // butun tizim
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique @db.VarChar(64)
+  passwordHash    String
+  fullName        String
+  phone           String?
+  email           String?
+  orgUnitId       Int
+  sipExtension    String?   @unique @db.VarChar(16) // UCM6510 dagi ichki raqam
+  languages       String[]  @default(["uz"]) // navbat ko'nikmalari: uz, ru
+  isActive        Boolean   @default(true)
+  twoFactorSecret String? // TOTP (rahbariyat, supervisor, admin uchun)
+  failedLogins    Int       @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  orgUnit          OrgUnit             @relation(fields: [orgUnitId], references: [id])
+  roles            UserRole[]
+  createdTickets   Ticket[]            @relation("TicketCreatedBy")
+  assignedTickets  Ticket[]            @relation("TicketAssignee")
+  ticketEvents     TicketEvent[]
+  attachments      Attachment[]
+  calls            Call[]              @relation("CallAgent")
+  statusLogs       AgentStatusLog[]
+  handledCallbacks CallbackRequest[]
+  blacklistEntries BlacklistedNumber[]
+  callCharges      CallCharge[]
+  qaGiven          QaEvaluation[]      @relation("QaEvaluator")
+  qaReceived       QaEvaluation[]      @relation("QaAgent")
+  articles         KnowledgeArticle[]
+  conversations    Conversation[]
+  messages         Message[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+
+  @@index([orgUnitId])
+  @@map("users")
+}
+
+model Role {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique @db.VarChar(64)
+  name        String
+  description String?
+  scope       DataScope @default(OWN)
+  permissions String[] // masalan: ["tickets.read", "tickets.create"] — ro'yxat: src/common/permissions.ts
+  isSystem    Boolean   @default(false) // tizim rollari o'chirilmaydi
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId Int
+  roleId Int
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// ───────────────────────────── Fuqarolar ─────────────────────────────
+
+model Citizen {
+  id         Int      @id @default(autoincrement())
+  phone      String   @unique @db.VarChar(20) // E.164: +998901234567
+  fullName   String?
+  pinfl      String? // JShShIR — ilova darajasida shifrlanadi
+  regionId   Int?
+  districtId Int?
+  address    String?
+  language   String?  @db.VarChar(5)
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  region        Region?        @relation(fields: [regionId], references: [id])
+  district      District?      @relation(fields: [districtId], references: [id])
+  tickets       Ticket[]
+  calls         Call[]
+  conversations Conversation[]
+
+  @@map("citizens")
+}
+
+// ───────────────────────────── Murojaatlar ─────────────────────────────
+
+enum TicketChannel {
+  PHONE
+  VOICEMAIL
+  TELEGRAM
+  WEBCHAT
+  EMAIL
+}
+
+enum TicketType {
+  INFO        // ma'lumot so'rash
+  APPLICATION // ariza yoki taklif
+  COMPLAINT   // shikoyat
+  CORRUPTION  // korrupsiya holati haqida xabar
+  GRATITUDE   // minnatdorchilik
+}
+
+// Holatlar va ruxsat etilgan o'tishlar: src/tickets/ticket-workflow.ts
+enum TicketStatus {
+  NEW         // Yangi
+  ROUTED      // Yo'naltirildi
+  IN_PROGRESS // Ijroda
+  ANSWERED    // Javob tayyorlandi
+  CLOSED      // Yopildi
+  RETURNED    // Qaytarildi (noto'g'ri yo'naltirilgan)
+}
+
+enum TicketEventType {
+  CREATED
+  ROUTED
+  ASSIGNED
+  RETURNED
+  ANSWERED
+  APPROVED
+  REJECTED
+  REOPENED
+  CLOSED
+  ESCALATED
+  COMMENT
+}
+
+model Category {
+  id             Int     @id @default(autoincrement())
+  parentId       Int?
+  code           String  @unique @db.VarChar(64)
+  nameUz         String
+  nameRu         String?
+  slaDays        Int     @default(15) // ijro muddati, kun
+  isConfidential Boolean @default(false) // masalan, korrupsiya xabarlari
+  isActive       Boolean @default(true)
+  sortOrder      Int     @default(0)
+
+  parent       Category?          @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]         @relation("CategoryTree")
+  tickets      Ticket[]
+  routingRules RoutingRule[]
+  articles     KnowledgeArticle[]
+
+  @@map("categories")
+}
+
+// Yo'naltirish jadvali: toifa va hudud bo'yicha mas'ul bo'linma.
+// null = "istalgan". Avval priority (kichigi oldin), keyin aniqlik hisobga olinadi.
+model RoutingRule {
+  id              Int     @id @default(autoincrement())
+  categoryId      Int?
+  regionId        Int?
+  districtId      Int?
+  targetOrgUnitId Int
+  priority        Int     @default(100)
+  isActive        Boolean @default(true)
+
+  category      Category? @relation(fields: [categoryId], references: [id])
+  region        Region?   @relation(fields: [regionId], references: [id])
+  district      District? @relation(fields: [districtId], references: [id])
+  targetOrgUnit OrgUnit   @relation(fields: [targetOrgUnitId], references: [id])
+
+  @@index([categoryId, regionId, districtId])
+  @@map("routing_rules")
+}
+
+model Ticket {
+  id                Int           @id @default(autoincrement())
+  number            String        @unique @db.VarChar(32) // 1097-2026-000123
+  channel           TicketChannel
+  type              TicketType
+  status            TicketStatus  @default(NEW)
+  categoryId        Int?
+  citizenId         Int?
+  isAnonymous       Boolean       @default(false)
+  isConfidential    Boolean       @default(false)
+  regionId          Int?
+  districtId        Int?
+  subject           String
+  description       String
+  cadastreNumber    String?       @db.VarChar(64) // kadastr raqami
+  applicationNumber String?       @db.VarChar(64) // ariza raqami
+  createdById       Int? // operator; omnikanaldan kelsa null
+  assignedOrgUnitId Int?
+  assigneeId        Int?
+  dueAt             DateTime?
+  escalatedAt       DateTime?
+  answer            String?
+  answeredAt        DateTime?
+  closedAt          DateTime?
+  duplicateOfId     Int?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  category        Category?      @relation(fields: [categoryId], references: [id])
+  citizen         Citizen?       @relation(fields: [citizenId], references: [id])
+  region          Region?        @relation(fields: [regionId], references: [id])
+  district        District?      @relation(fields: [districtId], references: [id])
+  createdBy       User?          @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  assignedOrgUnit OrgUnit?       @relation("TicketAssignedOrgUnit", fields: [assignedOrgUnitId], references: [id])
+  assignee        User?          @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  duplicateOf     Ticket?        @relation("TicketDuplicates", fields: [duplicateOfId], references: [id])
+  duplicates      Ticket[]       @relation("TicketDuplicates")
+  events          TicketEvent[]
+  attachments     Attachment[]
+  calls           Call[]
+  surveys         Survey[]
+  conversations   Conversation[]
+
+  @@index([status, dueAt])
+  @@index([assignedOrgUnitId, status])
+  @@index([assigneeId, status])
+  @@index([citizenId])
+  @@index([createdAt])
+  @@map("tickets")
+}
+
+// Murojaat raqamlari uchun yillik hisoblagich (1097-2026-000123)
+model TicketCounter {
+  year  Int @id
+  value Int @default(0)
+
+  @@map("ticket_counters")
+}
+
+model TicketEvent {
+  id         Int             @id @default(autoincrement())
+  ticketId   Int
+  actorId    Int?
+  type       TicketEventType
+  fromStatus TicketStatus?
+  toStatus   TicketStatus?
+  orgUnitId  Int? // ROUTED: qaysi bo'linmaga yuborildi
+  comment    String?
+  createdAt  DateTime        @default(now())
+
+  ticket  Ticket   @relation(fields: [ticketId], references: [id])
+  actor   User?    @relation(fields: [actorId], references: [id])
+  orgUnit OrgUnit? @relation(fields: [orgUnitId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_events")
+}
+
+model Attachment {
+  id           Int      @id @default(autoincrement())
+  ticketId     Int
+  storageKey   String // MinIO obyekt kaliti
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById Int?
+  createdAt    DateTime @default(now())
+
+  ticket     Ticket @relation(fields: [ticketId], references: [id])
+  uploadedBy User?  @relation(fields: [uploadedById], references: [id])
+
+  @@index([ticketId])
+  @@map("attachments")
+}
+
+// ───────────────────────────── Telefoniya ─────────────────────────────
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+  INTERNAL
+}
+
+enum CallResult {
+  ANSWERED  // javob berildi
+  ABANDONED // navbatda kutib, uzib qo'ydi
+  NO_ANSWER
+  BUSY
+  FAILED
+  IVR_ONLY  // IVR da yakunlandi (masalan, ariza holati avtomatik aytildi)
+  VOICEMAIL // ovozli xabar qoldirildi
+}
+
+enum AgentStatus {
+  READY
+  ON_CALL
+  WRAP_UP // qo'ng'iroqdan keyingi ish
+  BREAK
+  OFFLINE
+}
+
+enum CallbackStatus {
+  PENDING
+  DONE
+  FAILED
+  CANCELLED
+}
+
+model Queue {
+  id        Int     @id @default(autoincrement())
+  pbxNumber String  @unique @db.VarChar(16) // UCM6510 dagi navbat raqami
+  name      String
+  language  String? @db.VarChar(5)
+  isActive  Boolean @default(true)
+
+  calls     Call[]
+  callbacks CallbackRequest[]
+
+  @@map("queues")
+}
+
+model Call {
+  id           Int           @id @default(autoincrement())
+  pbxCallId    String        @unique @db.VarChar(64) // UCM uniqueid
+  direction    CallDirection
+  callerNumber String        @db.VarChar(32)
+  calledNumber String        @db.VarChar(32)
+  queueId      Int?
+  agentId      Int?
+  citizenId    Int?
+  ticketId     Int?
+  ivrPath      String? // masalan "lang:uz>menu:2"
+  startedAt    DateTime
+  answeredAt   DateTime?
+  endedAt      DateTime?
+  waitSeconds  Int           @default(0)
+  talkSeconds  Int           @default(0)
+  result       CallResult?
+  hangupBy     String?       @db.VarChar(16) // caller | agent | system
+  createdAt    DateTime      @default(now())
+
+  queue            Queue?            @relation(fields: [queueId], references: [id])
+  agent            User?             @relation("CallAgent", fields: [agentId], references: [id])
+  citizen          Citizen?          @relation(fields: [citizenId], references: [id])
+  ticket           Ticket?           @relation(fields: [ticketId], references: [id])
+  recording        Recording?
+  charge           CallCharge?
+  survey           Survey?
+  transcript       Transcript?
+  qaEvaluations    QaEvaluation[]
+  callbackRequests CallbackRequest[]
+
+  @@index([startedAt])
+  @@index([agentId, startedAt])
+  @@index([callerNumber])
+  @@index([ticketId])
+  @@map("calls")
+}
+
+model Recording {
+  id              Int       @id @default(autoincrement())
+  callId          Int       @unique
+  storageKey      String // MinIO obyekt kaliti
+  format          String    @db.VarChar(10) // wav, opus, mp3
+  sizeBytes       Int
+  durationSeconds Int
+  retainUntil     DateTime // saqlash muddati (3 oy) tugaydigan sana
+  legalHold       Boolean   @default(false) // nizoli yozuv — avtomatik o'chirilmaydi
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+
+  call Call @relation(fields: [callId], references: [id])
+
+  @@index([retainUntil])
+  @@map("recordings")
+}
+
+model AgentStatusLog {
+  id        Int         @id @default(autoincrement())
+  userId    Int
+  status    AgentStatus
+  reason    String? // tanaffus sababi
+  startedAt DateTime    @default(now())
+  endedAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, startedAt])
+  @@map("agent_status_logs")
+}
+
+model CallbackRequest {
+  id          Int            @id @default(autoincrement())
+  phone       String         @db.VarChar(20)
+  queueId     Int?
+  status      CallbackStatus @default(PENDING)
+  requestedAt DateTime       @default(now())
+  attempts    Int            @default(0)
+  handledById Int?
+  handledAt   DateTime?
+  callId      Int? // qayta qo'ng'iroq natijasi
+
+  queue     Queue? @relation(fields: [queueId], references: [id])
+  handledBy User?  @relation(fields: [handledById], references: [id])
+  call      Call?  @relation(fields: [callId], references: [id])
+
+  @@index([status, requestedAt])
+  @@map("callback_requests")
+}
+
+model BlacklistedNumber {
+  id          Int       @id @default(autoincrement())
+  phone       String    @unique @db.VarChar(20)
+  reason      String
+  createdById Int
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@map("blacklisted_numbers")
+}
+
+// ─────────────────────── Billing (qo'ng'iroqlar xarajati) ───────────────────────
+
+enum TariffDirection {
+  LOCAL         // shahar
+  MOBILE
+  LONG_DISTANCE // shaharlararo
+  INTERNATIONAL
+  INBOUND       // kiruvchi 1097 trafigi
+}
+
+model Tariff {
+  id             Int             @id @default(autoincrement())
+  direction      TariffDirection
+  prefix         String          @db.VarChar(16) // raqam prefiksi, masalan "99890"
+  pricePerMinute Decimal         @db.Decimal(12, 2) // so'm
+  billingStepSec Int             @default(60) // tariflash qadami, soniya
+  validFrom      DateTime
+  validTo        DateTime?
+
+  charges CallCharge[]
+
+  @@index([prefix, validFrom])
+  @@map("tariffs")
+}
+
+model CallCharge {
+  id           Int      @id @default(autoincrement())
+  callId       Int      @unique
+  tariffId     Int?
+  billableSec  Int
+  amount       Decimal  @db.Decimal(14, 2)
+  orgUnitId    Int?
+  userId       Int?
+  calculatedAt DateTime @default(now())
+
+  call    Call     @relation(fields: [callId], references: [id])
+  tariff  Tariff?  @relation(fields: [tariffId], references: [id])
+  orgUnit OrgUnit? @relation(fields: [orgUnitId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+
+  @@index([orgUnitId, calculatedAt])
+  @@map("call_charges")
+}
+
+// ─────────────────────────── Sifat va sun'iy intellekt ───────────────────────────
+
+enum Sentiment {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+model Survey {
+  id        Int      @id @default(autoincrement())
+  callId    Int?     @unique
+  ticketId  Int?
+  score     Int // 1..5
+  createdAt DateTime @default(now())
+
+  call   Call?   @relation(fields: [callId], references: [id])
+  ticket Ticket? @relation(fields: [ticketId], references: [id])
+
+  @@map("surveys")
+}
+
+model QaEvaluation {
+  id          Int      @id @default(autoincrement())
+  callId      Int
+  evaluatorId Int
+  agentId     Int
+  score       Int // 0..100
+  checklist   Json // baholash varaqasi bandlari
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  call      Call @relation(fields: [callId], references: [id])
+  evaluator User @relation("QaEvaluator", fields: [evaluatorId], references: [id])
+  agent     User @relation("QaAgent", fields: [agentId], references: [id])
+
+  @@index([agentId, createdAt])
+  @@map("qa_evaluations")
+}
+
+model Transcript {
+  id        Int        @id @default(autoincrement())
+  callId    Int        @unique
+  language  String     @db.VarChar(5)
+  text      String
+  summary   String?
+  sentiment Sentiment?
+  keywords  String[]
+  model     String // qaysi model bilan olingan
+  createdAt DateTime   @default(now())
+
+  call Call @relation(fields: [callId], references: [id])
+
+  @@map("transcripts")
+}
+
+model KnowledgeArticle {
+  id          Int      @id @default(autoincrement())
+  categoryId  Int?
+  title       String
+  body        String
+  isPublished Boolean  @default(false)
+  updatedById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category  Category? @relation(fields: [categoryId], references: [id])
+  updatedBy User?     @relation(fields: [updatedById], references: [id])
+
+  @@map("knowledge_articles")
+}
+
+// ───────────────────────────── Omnikanal ─────────────────────────────
+
+enum ConversationStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+model Conversation {
+  id            Int                @id @default(autoincrement())
+  channel       TicketChannel
+  externalId    String // Telegram chat id, email thread id va h.k.
+  citizenId     Int?
+  ticketId      Int?
+  assigneeId    Int?
+  status        ConversationStatus @default(OPEN)
+  lastMessageAt DateTime           @default(now())
+  createdAt     DateTime           @default(now())
+
+  citizen  Citizen?  @relation(fields: [citizenId], references: [id])
+  ticket   Ticket?   @relation(fields: [ticketId], references: [id])
+  assignee User?     @relation(fields: [assigneeId], references: [id])
+  messages Message[]
+
+  @@unique([channel, externalId])
+  @@index([status, lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             Int              @id @default(autoincrement())
+  conversationId Int
+  direction      MessageDirection
+  authorId       Int?
+  body           String
+  attachments    Json?
+  externalId     String?
+  sentAt         DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  author       User?        @relation(fields: [authorId], references: [id])
+
+  @@index([conversationId, sentAt])
+  @@map("messages")
+}
+
+// ───────────────────────────── Tizim ─────────────────────────────
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  type      String    @db.VarChar(64) // ticket.assigned, ticket.due_soon, ...
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// Faqat qo'shiladi: UPDATE va DELETE ma'lumotlar bazasi triggeri bilan taqiqlangan
+// (migrations/20261003000100_audit_log_append_only).
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  actorId    Int?
+  action     String   @db.VarChar(64) // auth.login, ticket.view, recording.play, ...
+  entityType String?  @db.VarChar(64)
+  entityId   String?  @db.VarChar(64)
+  ip         String?  @db.VarChar(64)
+  userAgent  String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Holiday {
+  id   Int      @id @default(autoincrement())
+  date DateTime @unique @db.Date
+  name String
+
+  @@map("holidays")
+}
+
+model Setting {
+  key         String   @id @db.VarChar(64)
+  value       Json
+  updatedById Int?
+  updatedAt   DateTime @updatedAt
+
+  @@map("settings")
+}

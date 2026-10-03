@@ -1,0 +1,17 @@
+{
+  "name": "call-center",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kadastr agentligi \"Zamonaviy Call-markaz\" yagona axborot tizimi",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "setup": "npm --prefix apps/backend install && npm --prefix apps/frontend install && npm --prefix apps/backend run prisma:generate",
+    "db:migrate": "npm --prefix apps/backend run prisma:migrate",
+    "db:seed": "npm --prefix apps/backend run db:seed",
+    "start": "node scripts/start.mjs",
+    "build": "npm --prefix apps/backend run build && npm --prefix apps/frontend run build",
+    "test": "npm --prefix apps/backend test"
+  }
+}

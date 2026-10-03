@@ -1,0 +1,79 @@
+# Ishlab chiqish: faqat PostgreSQL
+#   docker compose up -d postgres
+# To'liq stek (backend + frontend + Redis + MinIO): http://localhost:8080
+#   docker compose --profile full up -d --build
+name: call-center
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: callcenter
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-callcenter}
+      POSTGRES_DB: callcenter
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U callcenter -d callcenter"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Keyingi bosqich modullari uchun: fon vazifalari (BullMQ) va audio arxiv
+  redis:
+    image: redis:7-alpine
+    profiles: ["full"]
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    profiles: ["full"]
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-callcenter}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-callcenter-dev-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  backend:
+    build: ./apps/backend
+    profiles: ["full"]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://callcenter:${POSTGRES_PASSWORD:-callcenter}@postgres:5432/callcenter?schema=public
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET .env faylida berilishi kerak}
+      JWT_TTL_SECONDS: ${JWT_TTL_SECONDS:-28800}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TICKET_NUMBER_PREFIX: ${TICKET_NUMBER_PREFIX:-1097}
+      PBX_DRIVER: ${PBX_DRIVER:-mock}
+      UCM_BASE_URL: ${UCM_BASE_URL:-}
+      UCM_API_USER: ${UCM_API_USER:-}
+      UCM_API_PASSWORD: ${UCM_API_PASSWORD:-}
+      RECORDING_RETENTION_DAYS: ${RECORDING_RETENTION_DAYS:-90}
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build: ./apps/frontend
+    profiles: ["full"]
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+
+volumes:
+  pgdata:
+  miniodata:

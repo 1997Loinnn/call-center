@@ -39,10 +39,29 @@ export function canCloseImmediately(type: TicketType): boolean {
   return type === TicketType.INFO || type === TicketType.GRATITUDE;
 }
 
-/** Ijro muddati kalendar kunlarida hisoblanadi; bayram kunlarini hisobga olish keyingi bosqichda. */
-export function computeDueAt(from: Date, slaDays: number): Date {
+/** Ish kunlari (1 = dushanba … 7 = yakshanba) va bayramlar (YYYY-MM-DD, mahalliy sana). */
+export interface WorkCalendar {
+  workDays: number[];
+  holidays: Set<string>;
+}
+
+const localDateKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export function isWorkingDay(date: Date, calendar: WorkCalendar): boolean {
+  const weekday = date.getDay() === 0 ? 7 : date.getDay();
+  return calendar.workDays.includes(weekday) && !calendar.holidays.has(localDateKey(date));
+}
+
+/**
+ * Ijro muddati kalendar kunlarida hisoblanadi (F-CRM-05). Oxirgi kun dam olish yoki bayram kuniga
+ * to'g'ri kelsa, muddat keyingi ish kunigacha suriladi.
+ */
+export function computeDueAt(from: Date, slaDays: number, calendar?: WorkCalendar): Date {
   const due = new Date(from);
   due.setDate(due.getDate() + slaDays);
+  if (calendar && calendar.workDays.length > 0) {
+    for (let i = 0; i < 30 && !isWorkingDay(due, calendar); i++) due.setDate(due.getDate() + 1);
+  }
   return due;
 }
 

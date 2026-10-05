@@ -18,9 +18,10 @@ import type {
 } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import { toTreeSelect } from '../components/orgTree';
+import ToneTag from '../components/ToneTag';
 import StatusTag from '../components/StatusTag';
 import TicketDrawer from '../components/TicketDrawer';
-import { CHANNEL_LABELS, P, STATUS_META, TYPE_LABELS } from '../constants';
+import { AI_FLAG_LABELS, CHANNEL_LABELS, P, STATUS_META, TYPE_LABELS } from '../constants';
 import { formatDate, formatDateTime, formatNumber, formatPhone, isOverdue } from '../format';
 import { useAsync } from '../hooks/useAsync';
 import './tickets.css';
@@ -139,6 +140,15 @@ export default function TicketsPage() {
           <span className="cell-sub">
             {formatDateTime(t.createdAt)} · {CHANNEL_LABELS[t.channel]}
           </span>
+          {t.aiFlags?.length > 0 && (
+            <span>
+              {t.aiFlags.map((f) => (
+                <ToneTag key={f} tone={f === 'escalation' ? 'amber' : 'red'}>
+                  {AI_FLAG_LABELS[f] ?? f}
+                </ToneTag>
+              ))}
+            </span>
+          )}
         </span>
       ),
     },
@@ -219,7 +229,7 @@ export default function TicketsPage() {
           <Input.Search
             allowClear
             placeholder="Raqam, mavzu yoki telefon"
-            aria-label="Murojaatlarni qidirish"
+            aria-label="Murojaatlarni qidirish" data-hotkey="search"
             style={{ width: 280 }}
             onSearch={(search) => setFilter({ search: search || undefined })}
           />

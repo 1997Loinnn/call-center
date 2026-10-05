@@ -34,12 +34,19 @@ export function ticketScopeWhere(user: AuthUser): Prisma.TicketWhereInput {
           ...own,
           { assignedOrgUnit: { path: { startsWith: user.orgUnitPath } } },
           { createdBy: { orgUnit: { path: { startsWith: user.orgUnitPath } } } },
+          // Ishtirokchi (hamkor) bo'linma sifatida qo'shilgan murojaatlar
+          { participants: { some: { orgUnit: { path: { startsWith: user.orgUnitPath } } } } },
         ],
       };
       break;
     case DataScope.UNIT:
       visibility = {
-        OR: [...own, { assignedOrgUnitId: user.orgUnitId }, { createdBy: { orgUnitId: user.orgUnitId } }],
+        OR: [
+          ...own,
+          { assignedOrgUnitId: user.orgUnitId },
+          { createdBy: { orgUnitId: user.orgUnitId } },
+          { participants: { some: { orgUnitId: user.orgUnitId } } },
+        ],
       };
       break;
     default:

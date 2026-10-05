@@ -178,3 +178,102 @@
 .td-note {
   font-size: 12px;
 }
+
+/* Vazifalar tabi */
+.td-task-title {
+  display: block;
+}
+
+.td-task-meta {
+  display: block;
+  font-size: 12px;
+}
+
+.td-task-done .td-task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.td-task-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Ishtirokchi bo'linmalar */
+.td-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.td-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  background: #eef0f3;
+  font-size: 12px;
+}
+
+.td-chip-x {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.td-chip-x:hover {
+  background: #dfe3e8;
+  color: var(--ink);
+}
+
+.td-share {
+  display: flex;
+  gap: 8px;
+}
+
+.td-block .td-topic + .td-topic {
+  margin-top: 6px;
+}
+
+/* Takroriy murojaat va SMS tarixi */
+.td-duplicates {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.td-sms {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.td-sms-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.td-files-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

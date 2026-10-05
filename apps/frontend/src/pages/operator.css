@@ -383,40 +383,6 @@
   font-weight: 600;
 }
 
-.history-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid #eef0f3;
-  border-radius: 8px;
-  color: var(--ink);
-}
-
-.history-item:hover {
-  border-color: #a9d4d1;
-  color: var(--ink);
-}
-
-.history-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.history-no {
-  color: var(--muted);
-  font-size: 11px;
-}
-
-.history-subject {
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .citizen-empty {
   display: flex;
   flex-direction: column;
@@ -534,4 +500,116 @@
   color: #1f2937;
   font-size: 13px;
   line-height: 1.55;
+}
+
+/* Bir nechta mavzu: izoh va asosiy mavzu belgisi */
+.topic-hint {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.topic-primary {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 10px;
+  line-height: 18px;
+}
+
+.topic-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Bog'lanish uchun kontaktlar */
+.contacts-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.contacts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f6f7f9;
+  font-size: 13px;
+}
+
+.contact-row .mono {
+  font-weight: 500;
+}
+
+.contact-extra {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---------- AI tavsiyalari (tavsif ostida) ---------- */
+.ai-suggest {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: -12px 0 16px;
+  padding: 8px 10px;
+  border: 1px dashed #b9dcda;
+  border-radius: 8px;
+  background: #f4faf9;
+  font-size: 13px;
+}
+
+.ai-suggest-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-suggest-label {
+  color: #084f4f;
+  font-weight: 500;
+}
+
+.ai-chip {
+  margin: 0;
+  cursor: pointer;
+}
+
+.ai-chip:hover,
+.ai-chip:focus-visible {
+  border-color: #0b6b6b;
+  color: #084f4f;
+}
+
+.ai-chip-p {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.ai-flag {
+  color: #7f1d1d;
+}
+
+.ai-flag .anticon {
+  color: #b91c1c;
 }

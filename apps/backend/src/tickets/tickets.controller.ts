@@ -34,6 +34,13 @@ export class TicketsController {
     return this.tickets.counts(user, query);
   }
 
+  /** Menyu nishoni: foydalanuvchi amalini kutayotgan murojaatlar soni */
+  @Get('inbox-count')
+  @RequirePermissions(Permission.TicketsRead)
+  inboxCount(@CurrentUser() user: AuthUser) {
+    return this.tickets.inboxCount(user);
+  }
+
   @Get('export')
   @RequirePermissions(Permission.TicketsRead)
   @Header('Content-Type', 'text/csv; charset=utf-8')
@@ -62,44 +69,44 @@ export class TicketsController {
 
   @Post(':id/route')
   @RequirePermissions(Permission.TicketsRoute)
-  route(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: RouteTicketDto) {
-    return this.tickets.route(user, id, dto);
+  route(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: RouteTicketDto, @Req() req: Request) {
+    return this.tickets.route(user, id, dto, requestMeta(req));
   }
 
   @Post(':id/assign')
   @RequirePermissions(Permission.TicketsAssign)
-  assign(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: AssignTicketDto) {
-    return this.tickets.assign(user, id, dto);
+  assign(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: AssignTicketDto, @Req() req: Request) {
+    return this.tickets.assign(user, id, dto, requestMeta(req));
   }
 
   @Post(':id/return')
   @RequirePermissions(Permission.TicketsAssign)
-  returnTicket(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CommentDto) {
-    return this.tickets.returnTicket(user, id, dto.comment);
+  returnTicket(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CommentDto, @Req() req: Request) {
+    return this.tickets.returnTicket(user, id, dto.comment, requestMeta(req));
   }
 
   @Post(':id/answer')
   @RequirePermissions(Permission.TicketsAnswer)
-  answer(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: AnswerTicketDto) {
-    return this.tickets.answer(user, id, dto);
+  answer(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: AnswerTicketDto, @Req() req: Request) {
+    return this.tickets.answer(user, id, dto, requestMeta(req));
   }
 
   @Post(':id/approve')
   @RequirePermissions(Permission.TicketsApprove)
-  approve(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
-    return this.tickets.approve(user, id);
+  approve(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Req() req: Request) {
+    return this.tickets.approve(user, id, requestMeta(req));
   }
 
   @Post(':id/reject')
   @RequirePermissions(Permission.TicketsApprove)
-  reject(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CommentDto) {
-    return this.tickets.reject(user, id, dto.comment);
+  reject(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CommentDto, @Req() req: Request) {
+    return this.tickets.reject(user, id, dto.comment, requestMeta(req));
   }
 
   @Post(':id/reopen')
   @RequirePermissions(Permission.TicketsReopen)
-  reopen(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CommentDto) {
-    return this.tickets.reopen(user, id, dto.comment);
+  reopen(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() dto: CommentDto, @Req() req: Request) {
+    return this.tickets.reopen(user, id, dto.comment, requestMeta(req));
   }
 
   @Post(':id/comments')

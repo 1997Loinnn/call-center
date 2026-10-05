@@ -10,7 +10,8 @@ import { Permission } from '../common/permissions';
 /**
  * Operator paneli va monitoring ekranlari uchun real vaqt kanali (Socket.IO, /ws).
  * Xonalar: "user:<id>" — shaxsiy hodisalar (kiruvchi qo'ng'iroq, yangi murojaat),
- * "monitoring" — supervisor va rahbariyat (operator holatlari, navbat).
+ * "monitoring" — supervisor va rahbariyat (operator holatlari, navbat),
+ * "omni" — omnikanal suhbatlari bilan ishlovchi operatorlar.
  */
 @WebSocketGateway({ namespace: '/ws' })
 export class RealtimeGateway implements OnGatewayConnection {
@@ -38,6 +39,10 @@ export class RealtimeGateway implements OnGatewayConnection {
       client.data.user = user;
       await client.join(`user:${user.id}`);
       if (user.permissions.includes(Permission.MonitoringView)) await client.join('monitoring');
+      // Omnikanal: yangi xabarlar va suhbat o'zgarishlari operatorlarga
+      if (user.permissions.includes(Permission.TicketsCreate)) await client.join('omni');
+      // Qayta qo'ng'iroq so'rovlari va boshqa telefoniya ro'yxatlari
+      if (user.permissions.includes(Permission.TelephonyUse)) await client.join('telephony');
     } catch (err) {
       this.logger.debug(`WebSocket ulanishi rad etildi: ${err instanceof Error ? err.message : String(err)}`);
       client.disconnect(true);

@@ -21,7 +21,6 @@ export default function TopBar() {
           style={{ width: 120 }}
           options={[
             { value: 'uz', label: "O'zbek" },
-            { value: 'ru', label: 'Русский', disabled: true, title: 'Keyingi bosqichda' },
           ]}
         />
       </div>

@@ -25,17 +25,18 @@ export class CitizensService {
    */
   async cardByPhone(phoneInput: string, user: AuthUser, meta: RequestMeta) {
     const phone = normalizePhone(phoneInput);
-    const citizen = await this.prisma.citizen.findUnique({
-      where: { phone },
-      include: { region: { select: { id: true, nameUz: true } }, district: { select: { id: true, nameUz: true } } },
-    });
+    const include = { region: { select: { id: true, nameUz: true } }, district: { select: { id: true, nameUz: true } } };
+    // Qo'ng'iroq fuqaroning qo'shimcha aloqa raqamidan kelsa ham karta topiladi
+    const citizen =
+      (await this.prisma.citizen.findUnique({ where: { phone }, include })) ??
+      (await this.prisma.citizen.findFirst({ where: { extraPhones: { has: phone } }, include }));
 
     const ticketWhere: Prisma.TicketWhereInput = {
-      citizen: { phone },
+      ...(citizen ? { citizenId: citizen.id } : { citizen: { phone } }),
       isAnonymous: false,
       ...(hasPermission(user, Permission.TicketsConfidential) ? {} : { isConfidential: false }),
     };
-    const [tickets, calls] = await Promise.all([
+    const [tickets, calls, conversations] = await Promise.all([
       this.prisma.ticket.findMany({
         where: ticketWhere,
         select: {
@@ -58,10 +59,17 @@ export class CitizensService {
         orderBy: { startedAt: 'desc' },
         take: HISTORY_LIMIT,
       }),
+      // F-OMNI-04: Telegram, veb-chat va email yozishmalari ham fuqaro tarixida
+      this.prisma.conversation.findMany({
+        where: citizen ? { OR: [{ citizenId: citizen.id }, { contactPhone: phone }] } : { contactPhone: phone },
+        select: { id: true, channel: true, status: true, subject: true, lastMessageAt: true, ticket: { select: { id: true, number: true } } },
+        orderBy: { lastMessageAt: 'desc' },
+        take: HISTORY_LIMIT,
+      }),
     ]);
 
     await this.audit.log({ actorId: user.id, action: 'citizen.view', entityType: 'Citizen', entityId: citizen?.id ?? phone, ...meta });
-    return { phone, citizen, tickets, calls };
+    return { phone, citizen, tickets, calls, conversations };
   }
 
   /**

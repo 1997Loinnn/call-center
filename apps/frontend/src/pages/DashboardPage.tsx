@@ -1,8 +1,9 @@
 import { ReloadOutlined, WarningOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Col, Row, Statistic, Table } from 'antd';
+import { Alert, Button, Card, Col, Row, Segmented, Statistic, Table } from 'antd';
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../api/client';
+import RegionMap from '../components/charts/RegionMap';
 import type { Summary, TicketStatus } from '../api/types';
 import StatusTag from '../components/StatusTag';
 import { STATUS_META } from '../constants';
@@ -33,6 +34,7 @@ function StatTile({ label, value, suffix, prefix, critical }: {
 
 /** Rahbariyat dashboardi (F-REP-06): bugungi qo'ng'iroqlar va murojaatlar holati. */
 export default function DashboardPage() {
+  const [regionView, setRegionView] = useState<'map' | 'table'>('map');
   const { data, loading, error, reload } = useAsync(() => api.get<Summary>('/reports/summary').then((r) => r.data), []);
 
   useEffect(() => {
@@ -61,13 +63,13 @@ export default function DashboardPage() {
 
       <Row gutter={[16, 16]}>
         <Col xs={12} md={8} xl={4}>
-          <StatTile label="Bugungi qo'ng'iroqlar" value={calls?.total ?? 0} />
+          <StatTile label="Bugun kelgan qo'ng'iroqlar" value={calls?.total ?? 0} />
         </Col>
         <Col xs={12} md={8} xl={4}>
           <StatTile label="Javob berilgan" value={calls?.answered ?? 0} suffix={answeredShare !== null ? `· ${answeredShare}%` : undefined} />
         </Col>
         <Col xs={12} md={8} xl={4}>
-          <StatTile label="Kutib uzilgan" value={calls?.abandoned ?? 0} />
+          <StatTile label="Javobsiz" value={calls?.abandoned ?? 0} />
         </Col>
         <Col xs={12} md={8} xl={4}>
           <StatTile label="O'rtacha kutish" value={formatDuration(calls?.avgWaitSeconds ?? 0)} />
@@ -102,7 +104,24 @@ export default function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="Hududlar bo'yicha murojaatlar" size="small">
+          <Card
+            title="Hududlar bo'yicha murojaatlar"
+            size="small"
+            extra={
+              <Segmented<'map' | 'table'>
+                size="small"
+                value={regionView}
+                onChange={setRegionView}
+                options={[
+                  { value: 'map', label: 'Xarita' },
+                  { value: 'table', label: 'Jadval' },
+                ]}
+              />
+            }
+          >
+            {regionView === 'map' ? (
+              <RegionMap data={data?.tickets.byRegion ?? []} />
+            ) : (
             <Table
               size="small"
               rowKey="region"
@@ -115,6 +134,7 @@ export default function DashboardPage() {
                 { title: 'Soni', dataIndex: 'count', align: 'right', className: 'num' },
               ]}
             />
+            )}
           </Card>
         </Col>
       </Row>

@@ -30,3 +30,34 @@ export function errorMessage(err: unknown): string {
   }
   return err instanceof Error ? err.message : String(err);
 }
+
+/** Content-Disposition sarlavhasidan fayl nomi (RFC 5987 "filename*" ustun). */
+function fileNameOf(header: string | undefined, fallback: string): string {
+  const star = header && /filename\*=UTF-8''([^;]+)/i.exec(header);
+  if (star) return decodeURIComponent(star[1]);
+  const plain = header && /filename="?([^";]+)"?/i.exec(header);
+  return plain ? plain[1] : fallback;
+}
+
+/** Faylni yuklab oladi (eksport va hisobotlar). Xato bo'lsa, backend xabari bilan Error tashlaydi. */
+export async function downloadFile(path: string, params: object, fallbackName: string): Promise<void> {
+  try {
+    const res = await api.get<Blob>(path, { params, responseType: 'blob' });
+    const url = URL.createObjectURL(res.data);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileNameOf(res.headers['content-disposition'] as string | undefined, fallbackName);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    // responseType: 'blob' bo'lganda xato javobi ham Blob bo'lib keladi: JSON xabarini o'qib olamiz
+    if (err instanceof AxiosError && err.response?.data instanceof Blob) {
+      try {
+        err.response.data = JSON.parse(await err.response.data.text());
+      } catch {
+        /* JSON emas — umumiy xabar ishlatiladi */
+      }
+    }
+    throw new Error(errorMessage(err));
+  }
+}

@@ -1,0 +1,434 @@
+/* ---------- Omnikanal ---------- */
+.omni-header {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.omni-channel-states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.omni-channel-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.omni-channel-state::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #9ca3af;
+  content: '';
+}
+
+.omni-channel-state.is-connected {
+  color: var(--ink);
+}
+
+.omni-channel-state.is-connected::before {
+  background: #15803d;
+}
+
+.omni-channel-state.is-error::before {
+  background: #b91c1c;
+}
+
+.omni-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr) minmax(250px, 300px);
+  height: calc(100vh - 190px);
+  min-height: 520px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+@media (max-width: 1200px) {
+  .omni-grid {
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+  }
+
+  .omni-side {
+    display: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .omni-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .omni-list {
+    max-height: 420px;
+  }
+}
+
+/* Suhbatlar ro'yxati */
+.omni-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+}
+
+.omni-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.omni-filter-row {
+  display: flex;
+  gap: 8px;
+}
+
+.omni-items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.omni-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #f1f2f4;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.omni-item:hover {
+  background: #f8f9fa;
+}
+
+.omni-item.is-selected {
+  background: #f1f7f7;
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.omni-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #eef0f3;
+  color: #374151;
+  font-size: 15px;
+}
+
+.omni-avatar.is-telegram {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.omni-avatar.is-webchat {
+  background: #e3f1f0;
+  color: #0b6b6b;
+}
+
+.omni-avatar.is-email {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.omni-item-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.omni-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.omni-item-name {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.omni-item.is-unread .omni-item-name {
+  font-weight: 700;
+}
+
+.omni-item-time {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.omni-item-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.omni-you {
+  color: var(--muted);
+}
+
+.omni-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.omni-ticket-no {
+  color: #084f4f;
+}
+
+.omni-unread .ant-badge-count {
+  background: var(--brand);
+}
+
+.omni-pagination {
+  padding: 8px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+
+.omni-empty {
+  display: grid;
+  grid-column: span 2;
+  place-items: center;
+}
+
+/* Yozishma */
+.omni-thread {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.omni-thread-skeleton {
+  padding: 24px;
+}
+
+.omni-thread-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.omni-thread-title {
+  flex: 1;
+  min-width: 160px;
+}
+
+.omni-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 14px 16px;
+  overflow-y: auto;
+  background: #f8f9fb;
+}
+
+.omni-day {
+  margin: 8px auto;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: #eef0f3;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  width: max-content;
+}
+
+.omni-msg {
+  display: flex;
+}
+
+.omni-msg.is-out {
+  justify-content: flex-end;
+}
+
+.omni-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: min(560px, 80%);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px 12px 12px 4px;
+  background: #fff;
+}
+
+.omni-msg.is-out .omni-bubble {
+  border-color: #b9dcda;
+  border-radius: 12px 12px 4px 12px;
+  background: #e3f1f0;
+}
+
+.omni-msg.is-auto .omni-bubble {
+  border-style: dashed;
+  background: #f1f7f7;
+}
+
+.omni-msg-author {
+  color: #084f4f;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.omni-msg-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.omni-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.omni-attachment {
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: rgba(15, 30, 43, 0.06);
+  font-size: 12px;
+}
+
+.omni-msg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.omni-msg-queued {
+  color: #b45309;
+}
+
+.omni-msg-failed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #b91c1c;
+  font: inherit;
+  cursor: pointer;
+}
+
+.omni-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.omni-composer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.omni-quick {
+  display: inline-block;
+  max-width: 420px;
+  white-space: normal;
+}
+
+/* Yon panel */
+.omni-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+}
+
+.omni-side-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.omni-inline-form {
+  display: flex;
+  gap: 6px;
+}
+
+.omni-side-note {
+  margin-top: auto;
+}
+
+/* Kanallar oynasi */
+.omni-channels {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.omni-code {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #0f1e2b;
+}
+
+.omni-code code {
+  flex: 1;
+  color: #c3ced9;
+  font-family: var(--mono);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.omni-steps {
+  margin: 0 0 8px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}

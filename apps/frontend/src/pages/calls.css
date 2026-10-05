@@ -119,3 +119,57 @@
   border-color: #8cc4c1;
   color: #fff;
 }
+
+.calls-rec-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.calls-qa {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* Baholash varaqasi */
+.qa-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+  padding-left: 20px;
+}
+
+.qa-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qa-item {
+  flex: 1;
+  min-width: 220px;
+}
+
+.qa-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.qa-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.qa-history-comment {
+  flex-basis: 100%;
+  color: var(--ink-2);
+  font-size: 13px;
+}

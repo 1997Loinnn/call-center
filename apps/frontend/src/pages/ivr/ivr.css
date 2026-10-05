@@ -1,0 +1,340 @@
+/* ---------- Navbatlar va IVR ---------- */
+.ivr-header {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.ivr-tabs {
+  margin-bottom: 16px;
+}
+
+.ivr-publish {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.ivr-publish-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ivr-note-icon {
+  margin-left: 6px;
+  color: var(--brand);
+}
+
+.ivr-note-icon.is-warn {
+  color: #b45309;
+}
+
+.ivr-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .ivr-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ivr-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Menyular ro'yxati */
+.ivr-menu-list .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.ivr-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ivr-menu-item:hover {
+  background: #f6f7f9;
+}
+
+.ivr-menu-item.is-selected {
+  background: #f1f7f7;
+}
+
+.ivr-menu-name {
+  font-weight: 500;
+}
+
+.ivr-menu-item.is-selected .ivr-menu-name {
+  font-weight: 600;
+}
+
+.ivr-entry-tag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: #e3f1f0;
+  color: #084f4f;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ivr-issue-icon {
+  flex-shrink: 0;
+  color: #b45309;
+}
+
+.ivr-issue-icon.is-error {
+  color: #b91c1c;
+}
+
+.ivr-issues ul,
+.ivr-inline-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  color: #78350f;
+  font-size: 13px;
+}
+
+.ivr-issues ul {
+  margin: 0;
+}
+
+.ivr-issues li.is-error,
+.ivr-inline-issues li.is-error {
+  color: #7f1d1d;
+}
+
+/* Simulyator */
+.ivr-sim .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ivr-sim-time {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ivr-sim-start {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ivr-sim-schedule {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.ivr-sim-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  font-size: 13px;
+}
+
+.ivr-sim-log li {
+  display: flex;
+  gap: 8px;
+  line-height: 1.45;
+}
+
+.ivr-sim-icon {
+  flex-shrink: 0;
+  width: 16px;
+  color: var(--muted);
+}
+
+.ivr-sim-log li.is-say {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f1f7f7;
+  color: #084f4f;
+}
+
+.ivr-sim-log li.is-say .ivr-sim-icon {
+  color: var(--brand);
+}
+
+.ivr-sim-log li.is-input {
+  font-weight: 600;
+}
+
+.ivr-sim-log li.is-info {
+  color: var(--ink-2);
+}
+
+.ivr-sim-log li.is-warning {
+  color: #78350f;
+}
+
+.ivr-sim-log li.is-warning .ivr-sim-icon {
+  color: #b45309;
+}
+
+.ivr-sim-error {
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.ivr-sim-menu {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.ivr-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.ivr-key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.ivr-key:hover {
+  border-color: var(--brand);
+}
+
+.ivr-key.has-option {
+  border-color: #b9dcda;
+  background: #f1f7f7;
+  color: var(--ink);
+}
+
+.ivr-key-digit {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.ivr-key-label {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #084f4f;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.ivr-sim-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f6f7f9;
+  font-size: 13px;
+}
+
+.ivr-sim-ticket {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+}
+
+/* Ovozli xabarlar */
+.ivr-prompts {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .ivr-prompts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ivr-prompt-text {
+  display: -webkit-box;
+  max-width: 560px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.ivr-audio {
+  width: 100%;
+  max-width: 280px;
+  height: 32px;
+}
+
+.ivr-schedule {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f6f7f9;
+}
+
+.ivr-schedule dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ivr-schedule dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Qora ro'yxat */
+.ivr-blacklist {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ivr-blacklist-form {
+  row-gap: 8px;
+}

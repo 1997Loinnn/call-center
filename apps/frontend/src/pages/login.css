@@ -1,0 +1,163 @@
+/* ---------- Kirish (prototip: Kirish artboardi) ---------- */
+.login {
+  display: grid;
+  grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
+  /* Ota element (antd App) balandligi avtomatik — shuning uchun 100% emas, ekran balandligi */
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .login {
+    grid-template-columns: 1fr;
+  }
+
+  .login-intro {
+    display: none !important;
+  }
+}
+
+.login-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 40px 64px;
+  background: var(--sider);
+  color: #fff;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-brand .sider-logo {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  font-size: 22px;
+}
+
+.login-pitch h1 {
+  max-width: 520px;
+  margin: 12px 0 16px;
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.login-pitch p {
+  max-width: 480px;
+  margin: 0 0 24px;
+  color: var(--sider-text);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.login-kicker {
+  color: #8cc4c1;
+  font-size: 14px;
+}
+
+.login-pitch ul {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--sider-text);
+}
+
+.login-pitch li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.login-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #163a40;
+  color: #8cc4c1;
+  font-size: 12px;
+}
+
+.login-foot {
+  color: var(--sider-muted);
+  font-size: 12px;
+}
+
+.login-main {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 72px 16px 32px;
+  background: var(--bg);
+}
+
+.login-lang.ant-select {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  width: 120px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: 32px 36px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.login-card h2 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.login-mode {
+  margin: 20px 0;
+}
+
+.login-error {
+  margin-bottom: 16px;
+}
+
+.login-note {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #f6f7f9;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.login-note .anticon {
+  margin-top: 2px;
+  color: var(--brand);
+  font-size: 14px;
+}
+
+.login-otp {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 16px;
+}
+
+.login-sent {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}

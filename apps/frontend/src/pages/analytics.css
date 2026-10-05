@@ -1,0 +1,92 @@
+/* ---------- Analitika va hisobotlar (prototip: Analitika artboardi) ---------- */
+.analytics-header {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.analytics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.analytics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-note {
+  margin: 0;
+  padding: 10px 16px 12px;
+  font-size: 12px;
+}
+
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.billing-table th,
+.billing-table td {
+  padding: 8px 0;
+  border-bottom: 1px solid #eef0f3;
+  font-weight: 400;
+  text-align: left;
+}
+
+.billing-table td {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.billing-table td + td {
+  padding-left: 16px;
+}
+
+.billing-total th,
+.billing-total td {
+  border-bottom: 0;
+  font-weight: 600;
+}
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef0f3;
+  font-size: 13px;
+}
+
+.report-list li:last-child {
+  border-bottom: 0;
+}
+
+.report-name {
+  flex: 1;
+  min-width: 0;
+}

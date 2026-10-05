@@ -1,19 +1,24 @@
 import { LeftOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
 import { Button, Empty, Input } from 'antd';
-import { useMemo, useState } from 'react';
-import type { Category } from '../../api/types';
+import { useEffect, useMemo, useState } from 'react';
+import type { Category, TicketType } from '../../api/types';
 
 // 12 ta: 2, 3, 4 va 6 ustunda ham qatorlar to'liq bo'ladi
 const PER_PAGE = 12;
+// Asosiy + 5 ta qo'shimcha mavzu (backend: topicIds ko'pi bilan 5 ta)
+const MAX_TOPICS = 6;
 
 /**
  * Qo'ng'iroq mavzularini raqamli kartalar ko'rinishida tanlash (prototip: Operator paneli).
  * Mavzu — toifaning quyi bandi; mavzular hali kiritilmagan bo'lsa, toifalarning o'zi chiqadi.
+ * Murojaat turi tanlangan bo'lsa, faqat shu turga belgilangan (yoki turi belgilanmagan) mavzular chiqadi.
+ * Bir nechta mavzu tanlash mumkin: birinchisi asosiy — yo'naltirish va ijro muddati shu bo'yicha.
  */
-export default function TopicPicker({ categories, value, onChange }: {
+export default function TopicPicker({ categories, type, value = [], onChange }: {
   categories: Category[];
-  value?: number;
-  onChange?: (id: number | undefined) => void;
+  type?: TicketType;
+  value?: number[];
+  onChange?: (ids: number[]) => void;
 }) {
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
@@ -21,8 +26,10 @@ export default function TopicPicker({ categories, value, onChange }: {
   const parentName = useMemo(() => new Map(categories.filter((c) => !c.parentId).map((c) => [c.id, c.nameUz])), [categories]);
   const topics = useMemo(() => {
     const children = categories.filter((c) => c.parentId);
-    return (children.length > 0 ? children : categories).slice().sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [categories]);
+    return (children.length > 0 ? children : categories)
+      .filter((c) => !type || c.ticketTypes.length === 0 || c.ticketTypes.includes(type))
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [categories, type]);
 
   const q = query.trim().toLowerCase();
   const filtered = q
@@ -34,13 +41,16 @@ export default function TopicPicker({ categories, value, onChange }: {
       )
     : topics;
   const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  useEffect(() => setPage(0), [type]);
   const current = Math.min(page, pages - 1);
   const visible = filtered.slice(current * PER_PAGE, current * PER_PAGE + PER_PAGE);
 
   return (
     <div className="topic-picker">
       <div className="topic-toolbar">
-        <span className="topic-title">Qo'ng'iroq mavzusini tanlang</span>
+        <span className="topic-title">
+          Qo'ng'iroq mavzularini tanlang <span className="topic-hint">bir nechtasini tanlash mumkin, birinchisi — asosiy</span>
+        </span>
         <Input
           allowClear
           className="topic-search"
@@ -66,17 +76,22 @@ export default function TopicPicker({ categories, value, onChange }: {
       ) : (
         <div className="topic-grid">
           {visible.map((t) => {
-            const selected = t.id === value;
+            const order = value.indexOf(t.id);
+            const selected = order >= 0;
+            const full = !selected && value.length >= MAX_TOPICS;
             return (
               <button
                 key={t.id}
                 type="button"
                 className={`topic-card${selected ? ' is-selected' : ''}`}
                 aria-pressed={selected}
-                onClick={() => onChange?.(selected ? undefined : t.id)}
+                disabled={full}
+                title={full ? `Ko'pi bilan ${MAX_TOPICS} ta mavzu` : undefined}
+                onClick={() => onChange?.(selected ? value.filter((id) => id !== t.id) : [...value, t.id])}
               >
                 <span className="topic-meta">
                   <span className="topic-parent">{t.parentId ? parentName.get(t.parentId) : 'Toifa'}</span>
+                  {order === 0 && <span className="topic-primary">asosiy</span>}
                   {t.parentId !== null && <span className="topic-no mono">{t.sortOrder}</span>}
                 </span>
                 <span className="topic-name">{t.nameUz}</span>

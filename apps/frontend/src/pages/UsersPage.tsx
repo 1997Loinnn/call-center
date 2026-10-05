@@ -1,14 +1,16 @@
-import { EditOutlined, PlusOutlined, UnlockOutlined } from '@ant-design/icons';
-import { Alert, App, Avatar, Button, Card, Form, Input, Modal, Select, Switch, Table, Tag, Tooltip, TreeSelect } from 'antd';
+import { EditOutlined, PlusOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
+import { Alert, App, Avatar, Button, Card, Form, Input, Modal, Popconfirm, Select, Switch, Table, Tag, Tooltip, TreeSelect } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { api, errorMessage } from '../api/client';
 import type { OrgTreeNode, Page, RoleRow, UserRow } from '../api/types';
+import AccessNav from '../components/AccessNav';
 import { toTreeSelect } from '../components/orgTree';
 import ToneTag from '../components/ToneTag';
 import { formatDateTime, formatNumber } from '../format';
 import { useAsync } from '../hooks/useAsync';
+import { useAuth } from '../auth/AuthContext';
 
 interface UserForm {
   username?: string;
@@ -43,6 +45,7 @@ const isLocked = (u: UserRow) => !!u.lockedUntil && dayjs(u.lockedUntil).isAfter
 /** Foydalanuvchilar (Kirish boshqaruvi). Parol kamida 12 belgi (TZ 9-bo'lim). */
 export default function UsersPage() {
   const { message } = App.useApp();
+  const { user: me } = useAuth();
   const [query, setQuery] = useState<Query>({ page: 1, pageSize: 20 });
   const [editing, setEditing] = useState<UserRow | 'new' | null>(null);
   const [form] = Form.useForm<UserForm>();
@@ -106,6 +109,28 @@ export default function UsersPage() {
     }
   };
 
+  /** Telefon yo'qolsa: 2FA bekor qilinadi, keyingi kirishda foydalanuvchi ilovani qayta ulaydi. */
+  const resetTwoFactor = async (user: UserRow) => {
+    try {
+      await api.post(`/users/${user.id}/reset-2fa`);
+      message.success(`${user.fullName}: ikki bosqichli himoya bekor qilindi`);
+      void users.reload();
+    } catch (err) {
+      message.error(errorMessage(err));
+    }
+  };
+
+  /** Hisobni bloklash (isActive=false): foydalanuvchi tizimga kira olmaydi, ma'lumotlari saqlanadi. */
+  const setActive = async (user: UserRow, isActive: boolean) => {
+    try {
+      await api.patch(`/users/${user.id}`, { isActive });
+      message.success(`${user.fullName}: ${isActive ? 'faollashtirildi' : 'bloklandi'}`);
+      void users.reload();
+    } catch (err) {
+      message.error(errorMessage(err));
+    }
+  };
+
   const columns: ColumnsType<UserRow> = [
     {
       title: 'Foydalanuvchi',
@@ -128,6 +153,20 @@ export default function UsersPage() {
     { title: "Bo'linma", ellipsis: true, render: (_, u) => u.orgUnit.name },
     { title: 'SIP', dataIndex: 'sipExtension', width: 80, render: (v: string | null) => (v ? <span className="mono">{v}</span> : '—') },
     {
+      title: '2FA',
+      width: 90,
+      render: (_, u) =>
+        u.twoFactorEnabledAt ? (
+          <Tooltip title={`Ulangan: ${formatDateTime(u.twoFactorEnabledAt)}`}>
+            <span>
+              <ToneTag tone="green">Yoqilgan</ToneTag>
+            </span>
+          </Tooltip>
+        ) : (
+          <span className="cell-sub">—</span>
+        ),
+    },
+    {
       title: 'Holat',
       width: 150,
       render: (_, u) =>
@@ -145,13 +184,37 @@ export default function UsersPage() {
     },
     {
       title: <span className="visually-hidden">Amallar</span>,
-      width: 200,
+      width: 260,
       render: (_, u) => (
         <span className="user-actions" onClick={(e) => e.stopPropagation()}>
           {isLocked(u) && (
             <Button size="small" icon={<UnlockOutlined />} onClick={() => void unlock(u)}>
               Blokdan chiqarish
             </Button>
+          )}
+          {u.isActive ? (
+            u.id !== me?.id && (
+              <Popconfirm title={`${u.fullName} bloklansinmi?`} description="Tizimga kira olmaydi, ma'lumotlari saqlanadi." okText="Bloklash" cancelText="Bekor qilish" onConfirm={() => void setActive(u, false)}>
+                <Button size="small" danger icon={<StopOutlined />}>
+                  Bloklash
+                </Button>
+              </Popconfirm>
+            )
+          ) : (
+            <Button size="small" onClick={() => void setActive(u, true)}>
+              Faollashtirish
+            </Button>
+          )}
+          {u.twoFactorEnabledAt && (
+            <Popconfirm
+              title={`${u.fullName}: 2FA bekor qilinsinmi?`}
+              description="Telefon yo'qolganda: keyingi kirishda ilova qayta ulanadi."
+              okText="Bekor qilish"
+              cancelText="Yo'q"
+              onConfirm={() => void resetTwoFactor(u)}
+            >
+              <Button size="small">2FA</Button>
+            </Popconfirm>
           )}
           <Button size="small" type="text" icon={<EditOutlined />} aria-label={`${u.fullName}: tahrirlash`} onClick={() => open(u)} />
         </span>
@@ -172,14 +235,17 @@ export default function UsersPage() {
             parol kamida 12 belgi, 5 marta xato kiritilsa hisob vaqtincha bloklanadi
           </span>
         </div>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
-          Yangi foydalanuvchi
-        </Button>
+        <div className="header-actions">
+          <AccessNav />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => open('new')}>
+            Yangi foydalanuvchi
+          </Button>
+        </div>
       </div>
       <div className="toolbar">
         <Input.Search
           placeholder="Login yoki F.I.Sh."
-          aria-label="Foydalanuvchini qidirish"
+          aria-label="Foydalanuvchini qidirish" data-hotkey="search"
           allowClear
           style={{ width: 280 }}
           onSearch={(search) => setFilter({ search: search || undefined })}

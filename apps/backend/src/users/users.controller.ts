@@ -1,7 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
+import { AuthService } from '../auth/auth.service';
 import { AuthUser } from '../common/auth-user';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
+import { requestMeta } from '../common/http';
 import { Permission } from '../common/permissions';
 import { CreateUserDto, ResetPasswordDto, UpdateUserDto, UsersQueryDto } from './users.dto';
 import { UsersService } from './users.service';
@@ -9,7 +12,10 @@ import { UsersService } from './users.service';
 @ApiTags('users')
 @Controller('users')
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(
+    private readonly users: UsersService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Get()
   @RequirePermissions(Permission.UsersManage)
@@ -47,5 +53,13 @@ export class UsersController {
   @RequirePermissions(Permission.UsersManage)
   resetPassword(@Param('id', ParseIntPipe) id: number, @Body() dto: ResetPasswordDto, @CurrentUser() actor: AuthUser) {
     return this.users.resetPassword(id, dto.password, actor);
+  }
+
+  /** Telefon yo'qolsa: ikki bosqichli himoyani bekor qilish (keyingi kirishda qayta ulanadi). */
+  @Post(':id/reset-2fa')
+  @HttpCode(204)
+  @RequirePermissions(Permission.UsersManage)
+  resetTwoFactor(@Param('id', ParseIntPipe) id: number, @CurrentUser() actor: AuthUser, @Req() req: Request) {
+    return this.auth.resetTwoFactor(actor, id, requestMeta(req));
   }
 }

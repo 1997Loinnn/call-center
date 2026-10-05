@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { CallDirection, CallResult } from '@prisma/client';
 import { createHash } from 'node:crypto';
-import { PbxAdapter, PbxCdr, PbxEvent } from './pbx-adapter';
+import { PbxAdapter, PbxApplyResult, PbxCdr, PbxConfig, PbxEvent, QueueSnapshot, TrunkStatus } from './pbx-adapter';
 
 export interface Ucm6510Options {
   baseUrl: string; // masalan https://192.168.0.10:8089
@@ -100,6 +100,31 @@ export class Ucm6510Adapter implements PbxAdapter {
     // TODO(1-oy): amal nomi va parametrlari UCM6510 API hujjati bo'yicha tasdiqlanadi
     const result = await this.request<unknown>('dialOutbound', { caller: extension, outto: number });
     if (result.status !== 0) throw new Error(`UCM originate xatosi: status ${result.status}`);
+  }
+
+  async queueSnapshot(): Promise<QueueSnapshot[] | null> {
+    // TODO(1-oy): AMI "QueueStatus" (QueueEntry hodisalari) orqali; ungacha jonli navbat ko'rsatilmaydi
+    return null;
+  }
+
+  async trunkStatus(): Promise<TrunkStatus[] | null> {
+    // TODO(1-oy): "listVoIPTrunk" / AMI "SIPpeers" orqali trunk holati
+    return null;
+  }
+
+  async listen(supervisorExtension: string, agentExtension: string): Promise<void> {
+    // TODO(1-oy): UCM6510 "Spy" funksiya kodi yoki AMI Originate (ChanSpy) — tasdiqlangach qo'shiladi
+    throw new Error(`UCM6510 da tinglash hali sozlanmagan (${supervisorExtension} -> ${agentExtension})`);
+  }
+
+  async applyConfig(config: PbxConfig): Promise<PbxApplyResult> {
+    // TODO(2-etap): UCM6510 API ("updateQueue", "updateIVR", vaqt shartlari) amallari firmware hujjati bo'yicha
+    // tasdiqlangach shu yerda yuklanadi. Ungacha konfiguratsiya tizimda saqlanadi va UCM'ga qo'lda kiritiladi.
+    this.logger.warn(`UCM6510 ga avtomatik yuklash hali ulanmagan (v${config.version})`);
+    return {
+      applied: false,
+      note: "UCM6510 API orqali avtomatik yuklash 2-etapda ulanadi: hozircha sozlamalarni UCM veb-panelida shu ro'yxat bo'yicha kiriting",
+    };
   }
 
   private async login(): Promise<void> {

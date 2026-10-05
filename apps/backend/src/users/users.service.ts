@@ -21,6 +21,7 @@ const USER_SELECT = {
   lockedUntil: true,
   lastLoginAt: true,
   createdAt: true,
+  twoFactorEnabledAt: true,
   orgUnit: { select: { id: true, name: true } },
   roles: { select: { role: { select: { code: true, name: true } } } },
 } satisfies Prisma.UserSelect;
@@ -85,6 +86,8 @@ export class UsersService {
 
   async update(id: number, dto: UpdateUserDto, actor: AuthUser) {
     if (!(await this.prisma.user.findUnique({ where: { id } }))) throw new NotFoundException('Foydalanuvchi topilmadi');
+    // Administrator o'zini tasodifan bloklab, tizimdan chiqib qolmasligi uchun
+    if (id === actor.id && dto.isActive === false) throw new BadRequestException("O'z hisobingizni bloklab bo'lmaydi");
     const { roleCodes, ...data } = dto;
     const roleIds = roleCodes ? await this.resolveRoles(roleCodes) : undefined;
 

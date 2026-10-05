@@ -13,5 +13,12 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
   if (driver !== 'mock' && driver !== 'ucm6510') {
     throw new Error(`PBX_DRIVER noto'g'ri: ${String(driver)} (mock | ucm6510)`);
   }
+  const sms = String(config.SMS_DRIVER ?? 'off');
+  if (!['off', 'log', 'eskiz', 'http'].includes(sms)) {
+    throw new Error(`SMS_DRIVER noto'g'ri: ${sms} (off | log | eskiz | http)`);
+  }
+  if (sms === 'log' && config.NODE_ENV === 'production') {
+    throw new Error("SMS_DRIVER=log faqat ishlab chiqish uchun: ishlab chiqarishda eskiz yoki http qo'ying");
+  }
   return config;
 }

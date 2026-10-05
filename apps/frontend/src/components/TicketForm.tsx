@@ -1,16 +1,22 @@
-import { BranchesOutlined, LockOutlined, SendOutlined, UndoOutlined } from '@ant-design/icons';
+import { BranchesOutlined, DeleteOutlined, LockOutlined, PlusOutlined, SendOutlined, UndoOutlined } from '@ant-design/icons';
 import { Alert, App, Button, Card, Checkbox, Col, Form, Input, Row, Segmented, Select, Switch, TreeSelect, type FormInstance } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, errorMessage } from '../api/client';
 import type { Category, OrgTreeNode, Region, TicketListItem, TicketType } from '../api/types';
-import { TYPE_LABELS } from '../constants';
+import { TYPE_LABELS, TYPE_ORDER } from '../constants';
+import AiSuggestions from './operator/AiSuggestions';
 import TopicPicker from './operator/TopicPicker';
 import { toTreeSelect } from './orgTree';
+// Forma uslublari (mavzu kartalari, kontaktlar) — operator paneli bilan umumiy; omnikanal oynasida ham ishlatiladi
+import '../pages/operator.css';
 
 export interface TicketFormValues {
   type: TicketType;
-  categoryId?: number;
+  /** Tanlangan mavzular: birinchisi asosiy (yo'naltirish va muddat), qolganlari qo'shimcha */
+  topics?: number[];
+  /** Bog'lanish uchun qo'shimcha raqamlar */
+  extraPhones?: string[];
   regionId?: number;
   districtId?: number;
   description: string;
@@ -26,12 +32,13 @@ export interface TicketFormValues {
 
 // Joyida yopish backend qoidasi bilan bir xil (ticket-workflow.ts: canCloseImmediately)
 const CLOSABLE: TicketType[] = ['INFO', 'GRATITUDE'];
-const TYPE_ORDER: TicketType[] = ['INFO', 'APPLICATION', 'COMPLAINT', 'CORRUPTION', 'GRATITUDE'];
 
 /** Murojaat yaratish (F-OP-04): mavzu kartasi tanlanadi, mas'ul bo'linma yo'naltirish jadvalidan taklif qilinadi. */
-export default function TicketForm({ form, pbxCallId, categories, regions, orgTree, created, onCreated, onRouteChange }: {
+export default function TicketForm({ form, pbxCallId, submitUrl = '/tickets', categories, regions, orgTree, created, onCreated, onRouteChange }: {
   form: FormInstance<TicketFormValues>;
   pbxCallId?: string;
+  /** Omnikanal suhbatidan: /omni/conversations/:id/ticket (kanal va bog'lanish suhbatdan olinadi) */
+  submitUrl?: string;
   categories: Category[];
   regions: Region[];
   orgTree: OrgTreeNode[];
@@ -46,11 +53,14 @@ export default function TicketForm({ form, pbxCallId, categories, regions, orgTr
   const treeData = useMemo(() => toTreeSelect(orgTree), [orgTree]);
 
   const type = Form.useWatch('type', form);
-  const categoryId = Form.useWatch('categoryId', form);
+  const topics = Form.useWatch('topics', form) as number[] | undefined;
+  const categoryId = topics?.[0];
+  const citizenPhone = Form.useWatch('citizenPhone', form) as string | undefined;
   const regionId = Form.useWatch('regionId', form);
   const districtId = Form.useWatch('districtId', form);
   const targetOrgUnitId = Form.useWatch('targetOrgUnitId', form);
   const closeImmediately = Form.useWatch('closeImmediately', form);
+  const description = Form.useWatch('description', form) as string | undefined;
   const districts = regions.find((r) => r.id === regionId)?.districts ?? [];
   const topic = categories.find((c) => c.id === categoryId);
   const isCorruption = type === 'CORRUPTION' || !!topic?.isConfidential;
@@ -59,6 +69,16 @@ export default function TicketForm({ form, pbxCallId, categories, regions, orgTr
   useEffect(() => {
     if (!closable && form.getFieldValue('closeImmediately')) form.setFieldValue('closeImmediately', false);
   }, [closable, form]);
+
+  // Murojaat turi o'zgarsa, shu turda chiqmaydigan mavzular tanlovdan olib tashlanadi
+  useEffect(() => {
+    if (!topics?.length || !type) return;
+    const fits = topics.filter((id) => {
+      const c = categories.find((x) => x.id === id);
+      return !c || c.ticketTypes.length === 0 || c.ticketTypes.includes(type);
+    });
+    if (fits.length !== topics.length) form.setFieldValue('topics', fits);
+  }, [topics, type, categories, form]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,15 +103,20 @@ export default function TicketForm({ form, pbxCallId, categories, regions, orgTr
   const onFinish = async (values: TicketFormValues) => {
     setSaving(true);
     try {
-      const chosen = categories.find((c) => c.id === values.categoryId);
+      const { topics: chosenTopics = [], extraPhones = [], ...rest } = values;
+      const [primary, ...extra] = chosenTopics;
+      const chosen = categories.find((c) => c.id === primary);
       const payload = {
-        ...values,
-        // Mavzu nomi murojaat mavzusi bo'ladi; operator batafsilini tavsifga yozadi
+        ...rest,
+        categoryId: primary,
+        topicIds: extra.length > 0 ? extra : undefined,
+        extraPhones: extraPhones.map((p) => p?.trim()).filter(Boolean),
+        // Asosiy mavzu nomi murojaat mavzusi bo'ladi; operator batafsilini tavsifga yozadi
         subject: chosen?.nameUz ?? TYPE_LABELS[values.type],
         targetOrgUnitId: values.closeImmediately || isCorruption ? undefined : values.targetOrgUnitId,
         pbxCallId,
       };
-      const res = await api.post<TicketListItem>('/tickets', payload);
+      const res = await api.post<TicketListItem>(submitUrl, payload);
       setPickUnit(false);
       onCreated(res.data);
     } catch (err) {
@@ -154,8 +179,8 @@ export default function TicketForm({ form, pbxCallId, categories, regions, orgTr
           </div>
         )}
 
-        <Form.Item name="categoryId" rules={[{ required: true, message: 'Mavzuni tanlang' }]}>
-          <TopicPicker categories={categories} />
+        <Form.Item name="topics" rules={[{ required: true, type: 'array', min: 1, message: 'Kamida bitta mavzuni tanlang' }]}>
+          <TopicPicker categories={categories} type={type} />
         </Form.Item>
 
         {topic && (
@@ -205,6 +230,19 @@ export default function TicketForm({ form, pbxCallId, categories, regions, orgTr
             placeholder="Fuqaro so'zlari bilan: qaysi mulk yoki ariza, qachon murojaat qilgan, nima kutmoqda"
           />
         </Form.Item>
+        <AiSuggestions
+          text={description}
+          topics={topics}
+          regionId={regionId}
+          districtId={districtId}
+          type={type}
+          onTopic={(id) => form.setFieldValue('topics', [id, ...(topics ?? []).filter((t) => t !== id)])}
+          onPlace={(region, district) => {
+            const known = regions.find((r) => r.id === region)?.districts?.some((d) => d.id === district);
+            form.setFieldsValue({ regionId: region, districtId: known ? district : undefined });
+          }}
+          onType={(t) => form.setFieldValue('type', t)}
+        />
 
         <Row gutter={12}>
           <Col xs={24} md={12}>
@@ -216,6 +254,47 @@ export default function TicketForm({ form, pbxCallId, categories, regions, orgTr
             <Form.Item name="citizenName" label="Fuqaro F.I.Sh.">
               <Input />
             </Form.Item>
+          </Col>
+          <Col xs={24}>
+            <div className="contacts-block">
+              <div className="contacts-head">
+                <span>Bog'lanish uchun kontaktlar</span>
+              </div>
+              {citizenPhone?.trim() ? (
+                <div className="contact-row">
+                  <span className="mono">{citizenPhone}</span>
+                  <span className="cell-sub">Asosiy · qo'ng'iroq qilgan raqam</span>
+                </div>
+              ) : (
+                <span className="cell-sub">Avval fuqaro telefonini kiriting — qo'shimcha raqamlar unga bog'lanadi.</span>
+              )}
+              <Form.List name="extraPhones">
+                {(fields, { add, remove }) => (
+                  <>
+                    {fields.map((field) => (
+                      <div key={field.key} className="contact-extra">
+                        <Form.Item
+                          name={field.name}
+                          noStyle
+                          rules={[{ pattern: /^[+\d\s()-]{9,20}$/, message: "Telefon raqami noto'g'ri" }]}
+                        >
+                          <Input className="mono" inputMode="tel" placeholder="+998 __ ___ __ __" aria-label="Qo'shimcha telefon" />
+                        </Form.Item>
+                        <Button icon={<DeleteOutlined />} aria-label="Raqamni olib tashlash" onClick={() => remove(field.name)} />
+                      </div>
+                    ))}
+                    <Button
+                      icon={<PlusOutlined />}
+                      disabled={!citizenPhone?.trim() || fields.length >= 5}
+                      onClick={() => add('')}
+                      style={{ alignSelf: 'flex-start' }}
+                    >
+                      Telefon qo'shish
+                    </Button>
+                  </>
+                )}
+              </Form.List>
+            </div>
           </Col>
           <Col xs={24} md={12}>
             <Form.Item name="regionId" label="Viloyat">

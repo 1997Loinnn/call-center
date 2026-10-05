@@ -12,4 +12,6 @@ export interface AuthUser {
   roles: string[];
   permissions: string[];
   scope: DataScope;
+  /** Ikki bosqichli himoya yoqilganmi */
+  twoFactor: boolean;
 }

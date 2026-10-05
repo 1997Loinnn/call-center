@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable, Module, Query } from '@nestjs/common';
+import { Controller, Get, Injectable, Module, Query, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CallDirection, CallResult, Prisma } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
@@ -6,7 +6,11 @@ import { IsBoolean, IsDate, IsEnum, IsInt, IsOptional, IsString, MaxLength } fro
 import { AuthUser } from '../common/auth-user';
 import { callScopeWhere } from '../common/data-scope';
 import { CurrentUser, RequirePermissions } from '../common/decorators';
-import { PageQueryDto, pageArgs } from '../common/http';
+import { PageQueryDto, pageArgs, RequestMeta, requestMeta } from '../common/http';
+import { buildXlsx, XLSX_MIME } from '../common/xlsx';
+import { AuditService } from '../audit/audit.service';
+import { formatExportDate, formatExportPhone } from '../tickets/ticket-export';
+import type { Request, Response } from 'express';
 import { Permission } from '../common/permissions';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -52,10 +56,25 @@ export class CallsQueryDto extends PageQueryDto {
 }
 
 const LOST_RESULTS: CallResult[] = [CallResult.ABANDONED, CallResult.NO_ANSWER, CallResult.BUSY, CallResult.FAILED];
+const EXPORT_LIMIT = 20_000;
+const RESULT_LABELS: Record<CallResult, string> = {
+  ANSWERED: 'Javob berildi',
+  ABANDONED: 'Kutib uzildi',
+  NO_ANSWER: 'Javobsiz',
+  BUSY: 'Band',
+  FAILED: 'Xato',
+  IVR_ONLY: 'IVR da yakunlandi',
+  VOICEMAIL: 'Ovozli xabar',
+};
+const DIRECTION_LABELS: Record<CallDirection, string> = { INBOUND: 'Kiruvchi', OUTBOUND: 'Chiquvchi', INTERNAL: 'Ichki' };
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
 @Injectable()
 export class CallsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   /** withOutcome=false: yig'indi ko'rsatkichlar uchun (yo'nalish va natija tanloviga bog'liq emas). */
   private where(user: AuthUser, query: CallsQueryDto, withOutcome = true): Prisma.CallWhereInput {
@@ -103,6 +122,47 @@ export class CallsService {
     };
   }
 
+  /** Joriy filtr bo'yicha jurnal XLSX faylda (ko'pi bilan EXPORT_LIMIT qator); raqamlar chiqadi — audit jurnaliga yoziladi. */
+  async exportXlsx(user: AuthUser, query: CallsQueryDto, meta: RequestMeta): Promise<Buffer> {
+    const calls = await this.prisma.call.findMany({
+      where: this.where(user, query),
+      include: {
+        agent: { select: { fullName: true } },
+        queue: { select: { name: true } },
+        ticket: { select: { number: true } },
+        charge: { select: { amount: true } },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: EXPORT_LIMIT,
+    });
+    await this.audit.log({
+      actorId: user.id,
+      action: 'calls.export',
+      entityType: 'Call',
+      entityId: 'list',
+      details: { rows: calls.length, filters: { ...query, page: undefined, pageSize: undefined } } as never,
+      ...meta,
+    });
+    return buildXlsx([
+      {
+        name: "Qo'ng'iroqlar jurnali",
+        columns: ['Vaqt', "Yo'nalish", 'Raqam', 'Navbat', 'Operator', 'Kutish', 'Suhbat', 'Natija', 'Murojaat', "Narx (so'm)"],
+        rows: calls.map((c) => [
+          formatExportDate(c.startedAt),
+          DIRECTION_LABELS[c.direction],
+          formatExportPhone(c.direction === CallDirection.OUTBOUND ? c.calledNumber : c.callerNumber),
+          c.queue?.name ?? null,
+          c.agent?.fullName ?? null,
+          mmss(c.waitSeconds),
+          mmss(c.talkSeconds),
+          c.result ? RESULT_LABELS[c.result] : null,
+          c.ticket?.number ?? null,
+          c.charge ? Number(c.charge.amount) : null,
+        ]),
+      },
+    ]);
+  }
+
   async list(user: AuthUser, query: CallsQueryDto) {
     const where = this.where(user, query);
     const [items, total] = await this.prisma.$transaction([
@@ -112,7 +172,8 @@ export class CallsService {
           agent: { select: { id: true, fullName: true } },
           queue: { select: { id: true, name: true } },
           ticket: { select: { id: true, number: true } },
-          recording: { select: { id: true, durationSeconds: true, deletedAt: true } },
+          recording: { select: { id: true, durationSeconds: true, deletedAt: true, legalHold: true, retainUntil: true } },
+          qaEvaluations: { select: { score: true }, orderBy: { createdAt: 'desc' }, take: 1 },
           charge: { select: { amount: true } },
         },
         orderBy: { startedAt: 'desc' },
@@ -133,6 +194,19 @@ export class CallsController {
   @RequirePermissions(Permission.CallsRead)
   list(@CurrentUser() user: AuthUser, @Query() query: CallsQueryDto) {
     return this.calls.list(user, query);
+  }
+
+  @Get('export')
+  @RequirePermissions(Permission.CallsRead)
+  async export(@CurrentUser() user: AuthUser, @Query() query: CallsQueryDto, @Req() req: Request, @Res() res: Response) {
+    const body = await this.calls.exportXlsx(user, query, requestMeta(req));
+    res.set({
+      'Content-Type': XLSX_MIME,
+      'Content-Length': String(body.length),
+      'Content-Disposition': `attachment; filename="qongiroqlar-${new Date().toISOString().slice(0, 10)}.xlsx"`,
+      'Cache-Control': 'no-store',
+    });
+    res.send(body);
   }
 
   @Get('summary')

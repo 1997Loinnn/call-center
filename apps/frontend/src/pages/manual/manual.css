@@ -1,0 +1,154 @@
+/* ---------- Foydalanuvchi qo'llanmasi ---------- */
+.manual-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .manual-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.manual-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.manual-nav-item {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.manual-nav-item:hover {
+  background: #f6f7f9;
+}
+
+.manual-nav-item.is-active {
+  background: #f1f7f7;
+  box-shadow: inset 3px 0 0 var(--brand);
+}
+
+.manual-own {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: #e3f1f0;
+  color: #084f4f;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.manual-body {
+  max-width: 860px;
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.manual-body h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.manual-intro {
+  margin: 0 0 16px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+
+.manual-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.manual-steps li {
+  position: relative;
+  padding: 12px 14px;
+  border: 1px solid #eef0f3;
+  border-radius: 10px;
+}
+
+.manual-steps.is-numbered li {
+  padding-left: 52px;
+}
+
+.manual-steps.is-numbered li::before {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 13px;
+  content: counter(step);
+  counter-increment: step;
+}
+
+.manual-steps h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.manual-steps p,
+.manual-faq {
+  margin: 0;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.manual-step-section {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.manual-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+@media print {
+  .app-sider,
+  .topbar,
+  .manual-nav,
+  .manual .header-actions,
+  .manual-open {
+    display: none !important;
+  }
+
+  .manual-grid {
+    display: block;
+  }
+
+  .manual-body {
+    max-width: none;
+    border: 0;
+  }
+}

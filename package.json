@@ -10,6 +10,7 @@
     "setup": "npm --prefix apps/backend install && npm --prefix apps/frontend install && npm --prefix apps/backend run prisma:generate",
     "db:migrate": "npm --prefix apps/backend run prisma:migrate",
     "db:seed": "npm --prefix apps/backend run db:seed",
+    "db:fake": "npm --prefix apps/backend run db:fake --",
     "start": "node scripts/start.mjs",
     "build": "npm --prefix apps/backend run build && npm --prefix apps/frontend run build",
     "test": "npm --prefix apps/backend test"

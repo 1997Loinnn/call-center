@@ -1,17 +1,29 @@
-import { LockOutlined, PaperClipOutlined, PhoneOutlined } from '@ant-design/icons';
-import { Alert, App, Badge, Button, Drawer, Empty, Input, Popconfirm, Skeleton, Space, Steps, Tabs, Timeline, Typography } from 'antd';
+import { CloseOutlined, DeleteOutlined, DownloadOutlined, LockOutlined, PaperClipOutlined, PhoneOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { Alert, App, Badge, Button, Drawer, Dropdown, Empty, Input, Popconfirm, Popover, Skeleton, Space, Steps, Tabs, Timeline, TreeSelect, Typography, Upload } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
-import { api, errorMessage } from '../api/client';
-import type { TicketDetail, TicketStatus } from '../api/types';
+import { Link } from 'react-router-dom';
+import { api, downloadFile, errorMessage } from '../api/client';
+import type { OrgTreeNode, SmsStatus, TicketDetail, TicketStatus } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { CALL_RESULT_META, CHANNEL_LABELS, EVENT_LABELS, P, STATUS_META, TYPE_LABELS } from '../constants';
+import { AI_FLAG_LABELS, CALL_RESULT_META, CHANNEL_LABELS, EVENT_LABELS, P, STATUS_META, TYPE_LABELS } from '../constants';
 import { formatDateTime, formatDuration, formatPhone, isOverdue } from '../format';
 import { useAsync } from '../hooks/useAsync';
-import { TONE } from '../theme';
+import { TONE, type Tone } from '../theme';
 import ActionModal, { type ActionKind } from './ActionModal';
+import { toTreeSelect } from './orgTree';
 import StatusTag from './StatusTag';
+import TicketTasks, { type TicketTask } from './TicketTasks';
 import ToneTag from './ToneTag';
 import './ticket-drawer.css';
+
+const FILE_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.heic,.doc,.docx,.xls,.xlsx,.txt,.zip,.mp3,.ogg';
+
+const SMS_STATUS: Record<SmsStatus, { label: string; tone: Tone }> = {
+  QUEUED: { label: 'Navbatda', tone: 'amber' },
+  SENT: { label: 'Yuborildi', tone: 'blue' },
+  DELIVERED: { label: 'Yetkazildi', tone: 'green' },
+  FAILED: { label: 'Yetkazilmadi', tone: 'red' },
+};
 
 const FLOW: TicketStatus[] = ['NEW', 'ROUTED', 'IN_PROGRESS', 'ANSWERED', 'CLOSED'];
 
@@ -27,7 +39,7 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Murojaat tafsiloti (F-CRM-09): Umumiy, Jarayon, Javob, Fayllar, Tarix; amallar holat va rolga qarab. */
+/** Murojaat tafsiloti (F-CRM-09): Umumiy, Jarayon, Vazifalar, Javob, Fayllar, Tarix; amallar holat va rolga qarab. */
 export default function TicketDrawer({ id, onClose, onChanged }: {
   id: number | null;
   onClose: () => void;
@@ -43,6 +55,14 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
     () => (id ? api.get<TicketDetail>(`/tickets/${id}`).then((r) => r.data) : Promise.resolve(undefined)),
     [id],
   );
+  const canShare = can(P.TicketsRoute) || can(P.TicketsAssign);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUnit, setShareUnit] = useState<number>();
+  const orgTree = useAsync(
+    () => (id && canShare && can(P.OrgRead) ? api.get<OrgTreeNode[]>('/org-units/tree').then((r) => toTreeSelect(r.data)) : Promise.resolve([])),
+    [id, canShare],
+  );
+  const tasks = useAsync(() => (id ? api.get<TicketTask[]>(`/tickets/${id}/tasks`).then((r) => r.data) : Promise.resolve(undefined)), [id]);
 
   useEffect(() => {
     setTab('general');
@@ -53,6 +73,30 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
     setAction(null);
     void reload();
     onChanged();
+  };
+
+  const [uploading, setUploading] = useState(0);
+  const uploadFile = async (file: File) => {
+    setUploading((n) => n + 1);
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      await api.post(`/tickets/${id}/attachments`, body);
+      message.success(`${file.name} biriktirildi`);
+      void reload();
+    } catch (err) {
+      message.error(`${file.name}: ${errorMessage(err)}`);
+    } finally {
+      setUploading((n) => n - 1);
+    }
+  };
+  const removeFile = async (attachmentId: number) => {
+    try {
+      await api.delete(`/tickets/${id}/attachments/${attachmentId}`);
+      void reload();
+    } catch (err) {
+      message.error(errorMessage(err));
+    }
   };
 
   const post = async (path: string, body?: object, success = 'Saqlandi') => {
@@ -66,6 +110,40 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
       message.error(errorMessage(err));
     } finally {
       setBusy(false);
+    }
+  };
+
+  // Murojaat kartasi (PDF) va fuqaroga javob xati (DOCX); har bir yuklash audit jurnaliga yoziladi
+  const exportDoc = async (format: 'pdf' | 'docx') => {
+    if (!t) return;
+    try {
+      await downloadFile(`/tickets/${t.id}/export`, { format }, `${format === 'docx' ? 'javob-xati' : 'murojaat'}-${t.number}.${format}`);
+    } catch (err) {
+      message.error(errorMessage(err));
+    }
+  };
+
+  /** Ishtirokchi (hamkor) bo'linma: murojaatni ko'radi, izoh va vazifa qo'shadi; javobni asosiy mas'ul tayyorlaydi */
+  const addParticipant = async () => {
+    if (!t || !shareUnit) return;
+    try {
+      await api.post(`/tickets/${t.id}/participants`, { orgUnitId: shareUnit });
+      message.success("Ishtirokchi qo'shildi — bo'linma rahbariga xabar yuborildi");
+      setShareOpen(false);
+      setShareUnit(undefined);
+      void reload();
+    } catch (err) {
+      message.error(errorMessage(err));
+    }
+  };
+
+  const removeParticipant = async (orgUnitId: number) => {
+    if (!t) return;
+    try {
+      await api.delete(`/tickets/${t.id}/participants/${orgUnitId}`);
+      void reload();
+    } catch (err) {
+      message.error(errorMessage(err));
     }
   };
 
@@ -131,16 +209,47 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
           <span className="td-label">Tavsif</span>
           <p className="td-text">{t.description}</p>
         </div>
+        {(t.duplicateOf || t.duplicates.length > 0) && (
+          <div className="td-block td-duplicates">
+            <span className="td-label">Takroriy murojaat</span>
+            {t.duplicateOf ? (
+              <span>
+                Fuqaro shu mavzuda avval murojaat qilgan — asl murojaat:{' '}
+                <Link to={`/tickets/${t.duplicateOf.id}`} className="mono">
+                  {t.duplicateOf.number}
+                </Link>{' '}
+                <StatusTag status={t.duplicateOf.status} />
+              </span>
+            ) : (
+              <span>
+                Shu mavzuda yana {t.duplicates.length} marta murojaat qilingan:{' '}
+                {t.duplicates.map((d, i) => (
+                  <span key={d.id}>
+                    {i > 0 && ', '}
+                    <Link to={`/tickets/${d.id}`} className="mono">
+                      {d.number}
+                    </Link>
+                  </span>
+                ))}
+              </span>
+            )}
+          </div>
+        )}
         {t.category && (
           <div className="td-block">
-            <span className="td-label">Mavzu</span>
-            <div className="td-topic">
-              {t.category.parent && <span className="td-topic-no mono">{t.category.sortOrder}</span>}
-              <span className="td-topic-text">
-                <span className="td-label">{t.category.parent?.nameUz ?? 'Toifa'}</span>
-                <span>{t.category.nameUz}</span>
-              </span>
-            </div>
+            <span className="td-label">{t.extraTopics.length > 0 ? 'Mavzular' : 'Mavzu'}</span>
+            {[{ category: t.category, primary: true }, ...t.extraTopics.map((x) => ({ category: x.category, primary: false }))].map(({ category, primary }) => (
+              <div key={category.id} className="td-topic">
+                {category.parent && <span className="td-topic-no mono">{category.sortOrder}</span>}
+                <span className="td-topic-text">
+                  <span className="td-label">
+                    {category.parent?.nameUz ?? 'Toifa'}
+                    {primary && t.extraTopics.length > 0 ? ' · asosiy' : ''}
+                  </span>
+                  <span>{category.nameUz}</span>
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </section>
@@ -151,6 +260,51 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
           <Fact label="Ijrochi xodim">{t.assignee?.fullName ?? <span className="td-muted">Tayinlanmagan</span>}</Fact>
           <Fact label="Qabul qilgan operator">{t.createdBy?.fullName ?? '—'}</Fact>
         </dl>
+        <div className="td-block">
+          <span className="td-label">Ishtirokchilar</span>
+          <div className="td-chips">
+            {t.participants.length === 0 && !canShare && <span className="td-muted">Yo'q</span>}
+            {t.participants.map((p) => (
+              <span key={p.orgUnit.id} className="td-chip" title={p.addedBy ? `Qo'shdi: ${p.addedBy.fullName}, ${formatDateTime(p.createdAt)}` : undefined}>
+                {p.orgUnit.name}
+                {canShare && (
+                  <Popconfirm title={`${p.orgUnit.name} ishtirokchilardan olib tashlansinmi?`} okText="Ha" cancelText="Yo'q" onConfirm={() => void removeParticipant(p.orgUnit.id)}>
+                    <button type="button" className="td-chip-x" aria-label={`${p.orgUnit.name}: olib tashlash`}>
+                      <CloseOutlined />
+                    </button>
+                  </Popconfirm>
+                )}
+              </span>
+            ))}
+            {canShare && (
+              <Popover
+                trigger="click"
+                open={shareOpen}
+                onOpenChange={setShareOpen}
+                content={
+                  <div className="td-share">
+                    <TreeSelect
+                      showSearch
+                      treeNodeFilterProp="title"
+                      placeholder="Bo'linmani tanlang"
+                      style={{ width: 300 }}
+                      value={shareUnit}
+                      onChange={setShareUnit}
+                      treeData={orgTree.data ?? []}
+                    />
+                    <Button type="primary" disabled={!shareUnit} onClick={() => void addParticipant()}>
+                      Qo'shish
+                    </Button>
+                  </div>
+                }
+              >
+                <Button size="small" type="dashed" icon={<PlusOutlined />}>
+                  Qo'shish
+                </Button>
+              </Popover>
+            )}
+          </div>
+        </div>
       </section>
       <section className="td-section">
         <h3>Fuqaro ma'lumotlari</h3>
@@ -158,6 +312,11 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
           <dl className="td-grid">
             <Fact label="F.I.Sh.">{t.citizen.fullName ?? <span className="td-muted">Ko'rsatilmagan</span>}</Fact>
             <Fact label="Telefon"><span className="mono">{formatPhone(t.citizen.phone)}</span></Fact>
+            {t.citizen.extraPhones.length > 0 && (
+              <Fact label="Qo'shimcha raqamlar">
+                <span className="mono">{t.citizen.extraPhones.map(formatPhone).join(', ')}</span>
+              </Fact>
+            )}
             {t.citizen.address && <Fact label="Manzil">{t.citizen.address}</Fact>}
           </dl>
         ) : (
@@ -257,7 +416,24 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
   const files = t && (
     <div className="td-body">
       <section className="td-section">
-        <h3>Biriktirilgan fayllar</h3>
+        <div className="td-files-head">
+          <h3>Biriktirilgan fayllar</h3>
+          {t.status !== 'CLOSED' && (
+            <Upload
+              accept={FILE_ACCEPT}
+              showUploadList={false}
+              multiple
+              beforeUpload={(file) => {
+                void uploadFile(file);
+                return false;
+              }}
+            >
+              <Button size="small" icon={<UploadOutlined />} loading={uploading > 0}>
+                Fayl qo'shish
+              </Button>
+            </Upload>
+          )}
+        </div>
         {t.attachments.length === 0 ? (
           <span className="td-muted">Fayl biriktirilmagan.</span>
         ) : (
@@ -265,15 +441,26 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
             {t.attachments.map((a) => (
               <li key={a.id}>
                 <PaperClipOutlined />
-                <span className="td-list-main">{a.fileName}</span>
+                <a className="td-list-main" href={`/api/tickets/${t.id}/attachments/${a.id}`} target="_blank" rel="noreferrer">
+                  {a.fileName}
+                </a>
                 <span className="td-muted">
                   {fileSize(a.sizeBytes)} · {formatDateTime(a.createdAt)}
+                  {a.uploadedBy ? ` · ${a.uploadedBy.fullName}` : ''}
                 </span>
+                <a href={`/api/tickets/${t.id}/attachments/${a.id}?download=1`} aria-label={`${a.fileName}: yuklab olish`}>
+                  <DownloadOutlined />
+                </a>
+                {(a.uploadedBy?.id === user?.id || can(P.TicketsAssign)) && (
+                  <Popconfirm title={`${a.fileName} o'chirilsinmi?`} okText="O'chirish" cancelText="Yo'q" onConfirm={() => void removeFile(a.id)}>
+                    <Button size="small" type="text" danger icon={<DeleteOutlined />} aria-label={`${a.fileName}: o'chirish`} />
+                  </Popconfirm>
+                )}
               </li>
             ))}
           </ul>
         )}
-        <span className="td-muted td-note">Fayl yuklash va yuklab olish fayl arxivi (MinIO) ulangach ishlaydi.</span>
+        <span className="td-muted td-note">PDF, rasm (JPG, PNG), Word, Excel va boshqa hujjatlar · 20 MB gacha · har bir yuklash va ochish audit jurnaliga yoziladi.</span>
       </section>
       <section className="td-section">
         <h3>Bog'langan qo'ng'iroqlar</h3>
@@ -315,6 +502,21 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
           ),
         }))}
       />
+      {t.smsMessages.length > 0 && (
+        <section className="td-section">
+          <h3>Fuqaroga SMS</h3>
+          {t.smsMessages.map((m) => (
+            <div key={m.id} className="td-sms">
+              <span className="td-sms-meta">
+                <span className="mono">{formatDateTime(m.createdAt)}</span> · <span className="mono">{formatPhone(m.phone)}</span>
+                <ToneTag tone={SMS_STATUS[m.status].tone}>{SMS_STATUS[m.status].label}</ToneTag>
+              </span>
+              <span className="td-text">{m.text}</span>
+              {m.error && m.status !== 'DELIVERED' && <span className="td-muted">{m.error}</span>}
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 
@@ -324,6 +526,22 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
       onClose={onClose}
       width={680}
       className="ticket-drawer"
+      extra={
+        t && (
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: [
+                { key: 'pdf', label: 'Murojaat kartasi (PDF)' },
+                { key: 'docx', label: 'Javob xati (DOCX)', disabled: !t.answer, title: t.answer ? undefined : 'Javob hali yozilmagan' },
+              ],
+              onClick: ({ key }) => void exportDoc(key as 'pdf' | 'docx'),
+            }}
+          >
+            <Button icon={<DownloadOutlined />}>Eksport</Button>
+          </Dropdown>
+        )
+      }
       title={
         t ? (
           <div className="td-title">
@@ -335,6 +553,11 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
                 <LockOutlined /> Maxfiy
               </ToneTag>
             )}
+            {t.aiFlags?.map((f) => (
+              <ToneTag key={f} tone={f === 'escalation' ? 'amber' : 'red'}>
+                {AI_FLAG_LABELS[f] ?? f}
+              </ToneTag>
+            ))}
           </div>
         ) : (
           'Murojaat'
@@ -370,6 +593,11 @@ export default function TicketDrawer({ id, onClose, onChanged }: {
                   </Badge>
                 ),
                 children: process,
+              },
+              {
+                key: 'tasks',
+                label: `Vazifalar${tasks.data?.length ? ` (${tasks.data.filter((x) => !x.completedAt).length}/${tasks.data.length})` : ''}`,
+                children: <TicketTasks ticketId={t.id} tasks={tasks.data} onChanged={() => void tasks.reload()} />,
               },
               { key: 'answer', label: 'Javob', children: answerTab },
               { key: 'files', label: `Fayllar (${t.attachments.length + t.calls.length})`, children: files },

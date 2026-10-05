@@ -1,4 +1,16 @@
-import type { AgentStatus, CallDirection, CallResult, DataScope, TicketChannel, TicketStatus, TicketType } from './api/types';
+import type {
+  AgentStatus,
+  CallDirection,
+  CallResult,
+  CampaignStatus,
+  CampaignType,
+  ContactStatus,
+  DataScope,
+  ExportFormat,
+  TicketChannel,
+  TicketStatus,
+  TicketType,
+} from './api/types';
 import type { Tone } from './theme';
 
 // Backend ruxsatlari bilan bir xil (apps/backend/src/common/permissions.ts)
@@ -15,6 +27,9 @@ export const P = {
   CallsRead: 'calls.read',
   RecordingsPlay: 'recordings.play',
   TelephonyUse: 'telephony.use',
+  CampaignsManage: 'campaigns.manage',
+  BlacklistManage: 'blacklist.manage',
+  KnowledgeManage: 'knowledge.manage',
   MonitoringView: 'monitoring.view',
   ReportsView: 'reports.view',
   OrgRead: 'org.read',
@@ -37,6 +52,9 @@ export const PERMISSION_LABELS: Record<string, string> = {
   [P.CallsRead]: "Qo'ng'iroqlar jurnali",
   [P.RecordingsPlay]: 'Yozuvlarni tinglash',
   [P.TelephonyUse]: 'Softfon',
+  [P.CampaignsManage]: 'Kampaniyalarni boshqarish',
+  [P.BlacklistManage]: "Qora ro'yxat",
+  [P.KnowledgeManage]: 'Bilimlar bazasini tahrirlash',
   [P.MonitoringView]: 'Monitoring',
   [P.ReportsView]: 'Hisobotlar',
   [P.OrgRead]: "Tuzilmani ko'rish",
@@ -52,9 +70,9 @@ export const PERMISSION_GROUPS: { label: string; codes: string[] }[] = [
     label: 'Murojaatlar',
     codes: [P.TicketsRead, P.TicketsCreate, P.TicketsRoute, P.TicketsAssign, P.TicketsAnswer, P.TicketsApprove, P.TicketsReopen, P.TicketsConfidential],
   },
-  { label: "Fuqarolar va qo'ng'iroqlar", codes: [P.CitizensRead, P.CallsRead, P.RecordingsPlay, P.TelephonyUse] },
+  { label: "Fuqarolar va qo'ng'iroqlar", codes: [P.CitizensRead, P.CallsRead, P.RecordingsPlay, P.TelephonyUse, P.CampaignsManage, P.BlacklistManage] },
   { label: 'Boshqaruv markazi', codes: [P.MonitoringView, P.ReportsView, P.AuditRead] },
-  { label: 'Tuzilma va sozlamalar', codes: [P.OrgRead, P.OrgManage, P.UsersManage, P.SettingsManage] },
+  { label: 'Tuzilma va sozlamalar', codes: [P.OrgRead, P.OrgManage, P.UsersManage, P.SettingsManage, P.KnowledgeManage] },
 ];
 
 /** Shaxsiy yoki maxfiy ma'lumotga kirish beradigan ruxsatlar: berishda ehtiyot bo'lish kerak. */
@@ -76,6 +94,17 @@ export const TYPE_LABELS: Record<TicketType, string> = {
   CORRUPTION: 'Korrupsiya xabari',
   GRATITUDE: 'Minnatdorchilik',
 };
+
+/** Mavzu jadvali va kartalardagi qisqa nomlar */
+export const TYPE_SHORT: Record<TicketType, string> = {
+  INFO: "Ma'lumot",
+  APPLICATION: 'Ariza/taklif',
+  COMPLAINT: 'Shikoyat',
+  CORRUPTION: 'Korrupsiya',
+  GRATITUDE: 'Minnatdorchilik',
+};
+
+export const TYPE_ORDER: TicketType[] = ['INFO', 'APPLICATION', 'COMPLAINT', 'CORRUPTION', 'GRATITUDE'];
 
 export const CHANNEL_LABELS: Record<TicketChannel, string> = {
   PHONE: 'Telefon',
@@ -109,11 +138,11 @@ export const SCOPE_LABELS: Record<DataScope, string> = {
 };
 
 export const AGENT_STATUS_META: Record<AgentStatus, { label: string; tone: Tone }> = {
-  READY: { label: 'Tayyor', tone: 'green' },
+  READY: { label: "Bo'sh", tone: 'green' },
   ON_CALL: { label: 'Suhbatda', tone: 'blue' },
-  WRAP_UP: { label: "Qo'ng'iroqdan keyingi ish", tone: 'teal' },
+  WRAP_UP: { label: 'Yakunlash', tone: 'teal' },
   BREAK: { label: 'Tanaffus', tone: 'amber' },
-  OFFLINE: { label: 'Offline', tone: 'grey' },
+  OFFLINE: { label: 'Oflayn', tone: 'grey' },
 };
 
 export const EVENT_LABELS: Record<string, string> = {
@@ -140,4 +169,40 @@ export const ORG_TYPE_LABELS: Record<string, string> = {
   CHAMBER_REGIONAL: 'DKP boshqarmasi',
   CHAMBER_BRANCH: 'DKP filiali',
   SUBORDINATE_ORG: 'Tasarrufidagi tashkilot',
+};
+
+/** Fayl formati nishoni (fmt-badge) rangi */
+export const FORMAT_CLASS: Record<ExportFormat, string> = { XLSX: 'fmt-xlsx', PDF: 'fmt-pdf', DOCX: 'fmt-docx', CSV: 'fmt-csv' };
+
+export const CAMPAIGN_TYPE_LABELS: Record<CampaignType, string> = {
+  CALLBACK: 'Qayta aloqa',
+  SURVEY: "So'rovnoma",
+  REMINDER: 'Eslatma',
+  INFORM: 'Xabardor qilish',
+};
+
+export const CAMPAIGN_STATUS_META: Record<CampaignStatus, { label: string; tone: Tone }> = {
+  DRAFT: { label: 'Qoralama', tone: 'grey' },
+  SCHEDULED: { label: 'Rejalashtirilgan', tone: 'blue' },
+  ACTIVE: { label: 'Faol', tone: 'green' },
+  PAUSED: { label: 'Pauza', tone: 'amber' },
+  COMPLETED: { label: 'Yakunlangan', tone: 'teal' },
+  CANCELLED: { label: 'Bekor qilingan', tone: 'red' },
+};
+
+export const CONTACT_STATUS_META: Record<ContactStatus, { label: string; tone: Tone }> = {
+  PENDING: { label: 'Navbatda', tone: 'grey' },
+  REACHED: { label: "Bog'lanildi", tone: 'green' },
+  NO_ANSWER: { label: 'Javob bermadi', tone: 'grey' },
+  BUSY: { label: 'Band', tone: 'grey' },
+  CALL_LATER: { label: 'Keyinroq', tone: 'amber' },
+  WRONG_NUMBER: { label: "Noto'g'ri raqam", tone: 'red' },
+  FAILED: { label: 'Urinishlar tugadi', tone: 'red' },
+};
+
+/** Murojaat matnidagi kalit so'z belgilari (F-AI-04) */
+export const AI_FLAG_LABELS: Record<string, string> = {
+  corruption: 'Korrupsiya belgisi',
+  threat: 'Tahdid',
+  escalation: 'Yuqoriga shikoyat',
 };

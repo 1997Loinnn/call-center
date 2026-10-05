@@ -14,6 +14,7 @@ const baseUser: AuthUser = {
   roles: ['OPERATOR'],
   permissions: [Permission.TicketsRead],
   scope: DataScope.OWN,
+  twoFactor: false,
 };
 
 describe('widestScope', () => {
@@ -42,6 +43,13 @@ describe('ticketScopeWhere', () => {
     const head = { ...baseUser, scope: DataScope.UNIT_TREE };
     const where = ticketScopeWhere(head);
     expect(JSON.stringify(where)).toContain('"startsWith":"/1/2/"');
+  });
+
+  it("ishtirokchi bo'linma murojaatni ko'radi (UNIT va UNIT_TREE)", () => {
+    const tree = JSON.stringify(ticketScopeWhere({ ...baseUser, scope: DataScope.UNIT_TREE }));
+    expect(tree).toContain('"participants":{"some":{"orgUnit":{"path":{"startsWith":"/1/2/"}}}}');
+    const unit = JSON.stringify(ticketScopeWhere({ ...baseUser, scope: DataScope.UNIT }));
+    expect(unit).toContain(`"participants":{"some":{"orgUnitId":${baseUser.orgUnitId}}}`);
   });
 });
 

@@ -1,0 +1,200 @@
+/* ---------- Fuqaro veb-chati (vidjet va alohida sahifa) ---------- */
+.wc-page {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 24px 16px;
+  background: #f3f4f6;
+}
+
+.wc-page.is-embed {
+  padding: 0;
+  background: #fff;
+}
+
+.wc-window {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  height: min(680px, calc(100vh - 48px));
+  overflow: hidden;
+  border: 1px solid #e2e5ea;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 12px 32px rgba(15, 30, 43, 0.12);
+}
+
+.wc-page.is-embed .wc-window {
+  max-width: none;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.wc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #0b6b6b;
+  color: #fff;
+}
+
+.wc-logo {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 17px;
+}
+
+.wc-head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.wc-title {
+  font-weight: 600;
+}
+
+.wc-sub {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+}
+
+.wc-close {
+  padding: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.wc-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.wc-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 14px;
+  overflow-y: auto;
+  background: #f8f9fb;
+}
+
+.wc-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  color: #374151;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.wc-intro p {
+  margin: 0;
+}
+
+.wc-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.wc-msg {
+  display: flex;
+}
+
+.wc-msg.is-me {
+  justify-content: flex-end;
+}
+
+.wc-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: 82%;
+  padding: 8px 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 30, 43, 0.06);
+}
+
+.wc-msg.is-me .wc-bubble {
+  border-radius: 14px 14px 4px 14px;
+  background: #0b6b6b;
+  color: #fff;
+}
+
+.wc-author {
+  color: #084f4f;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.wc-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.wc-time {
+  align-self: flex-end;
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.wc-ticket {
+  padding: 8px 14px;
+  border-top: 1px solid #e2e5ea;
+  background: #e3f1f0;
+  color: #084f4f;
+  font-size: 13px;
+}
+
+.wc-error {
+  padding: 6px 14px;
+  background: #fee2e2;
+  color: #7f1d1d;
+  font-size: 13px;
+}
+
+.wc-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #e2e5ea;
+}
+
+.wc-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 10px;
+  color: #5f6773;
+  font-size: 11px;
+}
+
+.wc-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #0b6b6b;
+  font: inherit;
+  cursor: pointer;
+}

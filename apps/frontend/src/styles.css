@@ -235,22 +235,12 @@ body {
   padding-right: 12px;
 }
 
-/* Uzun nom «reja» belgisini siqib chiqarmasin: nom qisqaradi, to'liq nomi title'da */
+/* Uzun nom menyu nishonini siqib chiqarmasin: nom qisqaradi, to'liq nomi title'da */
 .menu-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.planned-tag {
-  margin-left: 6px;
-  padding: 0 6px;
-  border: 1px solid #2b4a63;
-  border-radius: 6px;
-  color: var(--sider-muted);
-  font-size: 10px;
-  line-height: 16px;
 }
 
 .sider-user {
@@ -657,4 +647,316 @@ body {
   .bell-panel {
     width: min(330px, calc(100vw - 48px));
   }
+}
+
+/* ---------- Ko'rsatkich kartalari (Analitika, Jonli holat, Ogohlantirishlar) ---------- */
+.kpi-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.kpi-card-label {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.kpi-card-value {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.kpi-card-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.kpi-card-sub.is-good {
+  color: #14532d;
+}
+
+.kpi-card-sub.is-warn {
+  color: #78350f;
+}
+
+.kpi-card-sub.is-bad {
+  color: #7f1d1d;
+}
+
+/* Kartaning sarlavhasi ostidagi izoh qatori */
+.card-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+/* Fayl formati nishoni (eksport shablonlari, tayyor hisobotlar) */
+.fmt-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: #eef0f3;
+  color: #374151;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.fmt-xlsx {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+.fmt-pdf {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.fmt-docx {
+  background: #dbeafe;
+  color: #1e3a8a;
+}
+
+/* Modal formalarida yonma-yon maydonlar */
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 12px;
+}
+
+.form-row > .ant-form-item {
+  min-width: 140px;
+}
+
+/* Filtr chiplari (jonli holat, audit jurnali) */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: #c9ced6;
+}
+
+.chip.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.chip-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+/* Menyu nishonlari (prototip: "Murojaatlar 12", "Ogohlantirishlar 3") */
+.menu-badge {
+  min-width: 22px;
+  margin-left: 6px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: center;
+}
+
+.menu-badge.is-tickets {
+  background: #2b4a63;
+}
+
+.menu-badge.is-alerts {
+  background: #b91c1c;
+}
+
+.menu-badge.is-omni {
+  background: #0b6b6b;
+}
+
+.ant-menu-dark .ant-menu-item-selected .menu-badge.is-tickets,
+.ant-menu-dark .ant-menu-item-selected .menu-badge.is-omni {
+  background: #084f4f;
+}
+
+.sider-menu .menu-help {
+  margin-top: 8px !important;
+  color: var(--sider-muted) !important;
+}
+
+/* Sahifa sarlavhasining o'ng tomonidagi tugmalar guruhi */
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Tarix bandi: fuqaro kartasi (operator paneli) va omnikanal yon panelidagi murojaat/yozishma */
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #eef0f3;
+  border-radius: 8px;
+  color: var(--ink);
+}
+
+.history-item:hover {
+  border-color: #a9d4d1;
+  color: var(--ink);
+}
+
+.history-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.history-no {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.history-subject {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ikki bosqichli himoyani ulash (kirish va "Xavfsizlik" oynasi) */
+.tfa-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tfa-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+.tfa-qr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.tfa-key {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.tfa-key code {
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.tfa-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.security-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.security-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.security-icon {
+  color: var(--brand);
+  font-size: 22px;
+}
+
+/* Bilimlar bazasi maqolasi (sahifa, operator paneli oynasi) */
+.article-body {
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.article-body p {
+  margin: 0 0 10px;
+}
+
+.article-body ul {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.kb-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.kb-mini-item {
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--brand);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-mini-item:hover {
+  background: #f1f7f7;
 }

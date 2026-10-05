@@ -1,0 +1,74 @@
+/* ---------- Tizim → Sozlamalar ---------- */
+.sys-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .sys-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sys-wide {
+  grid-column: 1 / -1;
+}
+
+.sys-sms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+@media (max-width: 800px) {
+  .sys-sms {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sys-integrations {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sys-integrations li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.sys-integrations li:last-child {
+  border-bottom: 0;
+}
+
+.sys-holiday-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.sys-holiday-add .ant-input {
+  flex: 1 1 220px;
+  width: auto;
+}
+
+.qa-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qa-editor-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}

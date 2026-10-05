@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuthUser } from './auth-user';
-import { IS_PUBLIC_KEY, PERMISSIONS_KEY } from './decorators';
+import { ANY_PERMISSIONS_KEY, IS_PUBLIC_KEY, PERMISSIONS_KEY } from './decorators';
 
 // Global guard'lar WebSocket gateway'ga ham qo'llanadi; WebSocket ulanishi
 // RealtimeGateway.handleConnection'da alohida tekshiriladi, shuning uchun bu yerda faqat HTTP.
@@ -31,17 +31,19 @@ export class PermissionsGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     if (context.getType() !== 'http') return true;
-    const required = this.reflector.getAllAndOverride<string[] | undefined>(PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!required || required.length === 0) return true;
+    const targets = [context.getHandler(), context.getClass()];
+    const required = this.reflector.getAllAndOverride<string[] | undefined>(PERMISSIONS_KEY, targets) ?? [];
+    const anyOf = this.reflector.getAllAndOverride<string[] | undefined>(ANY_PERMISSIONS_KEY, targets) ?? [];
+    if (required.length === 0 && anyOf.length === 0) return true;
 
     const user = context.switchToHttp().getRequest().user as AuthUser | undefined;
     if (!user) return false;
     const missing = required.filter((permission) => !user.permissions.includes(permission));
     if (missing.length > 0) {
       throw new ForbiddenException(`Ruxsat yetarli emas: ${missing.join(', ')}`);
+    }
+    if (anyOf.length > 0 && !anyOf.some((permission) => user.permissions.includes(permission))) {
+      throw new ForbiddenException(`Ruxsat yetarli emas: ${anyOf.join(' yoki ')}`);
     }
     return true;
   }

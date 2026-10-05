@@ -6,12 +6,14 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { AgentStatus } from '@prisma/client';
+import { AgentStatus, CallDirection } from '@prisma/client';
+import { BillingService } from '../billing/billing.module';
 import { AuthUser } from '../common/auth-user';
 import { normalizePhone } from '../common/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 import { RecordingsService } from '../recordings/recordings.service';
+import { BlacklistService } from './blacklist';
 import { MockPbxAdapter } from './mock-pbx.adapter';
 import { PBX_ADAPTER, PbxAdapter, PbxCdr, PbxEvent } from './pbx-adapter';
 
@@ -26,6 +28,8 @@ export class TelephonyService implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeGateway,
     private readonly recordings: RecordingsService,
+    private readonly blacklist: BlacklistService,
+    private readonly billing: BillingService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -63,11 +67,13 @@ export class TelephonyService implements OnModuleInit, OnModuleDestroy {
   }
 
   /** Faqat PBX_DRIVER=mock rejimida: kiruvchi qo'ng'iroqni taqlid qilish. */
-  simulateIncomingCall(user: AuthUser, callerNumber: string): { pbxCallId: string } {
+  async simulateIncomingCall(user: AuthUser, callerNumber: string): Promise<{ pbxCallId: string }> {
     if (!(this.pbx instanceof MockPbxAdapter)) {
       throw new BadRequestException('Test qo\'ng\'irog\'i faqat PBX_DRIVER=mock rejimida ishlaydi');
     }
     if (!user.sipExtension) throw new BadRequestException('Sizga SIP ichki raqam biriktirilmagan');
+    // UCM6510 qora ro'yxatdagi raqamni o'zi rad etadi; taqlidda ham shunday
+    if (await this.blacklist.isBlocked(callerNumber)) throw new BadRequestException("Raqam qora ro'yxatda: qo'ng'iroq qabul qilinmaydi");
     return { pbxCallId: this.pbx.simulateIncomingCall(user.sipExtension, normalizePhone(callerNumber)) };
   }
 
@@ -100,16 +106,19 @@ export class TelephonyService implements OnModuleInit, OnModuleDestroy {
   /** CDR'ni qo'ng'iroqlar jurnaliga yozadi (F-REC-06). Operator id'sini qaytaradi. */
   private async saveCdr(cdr: PbxCdr): Promise<number | null> {
     const callerNumber = normalizePhone(cdr.callerNumber);
+    // Chiquvchi qo'ng'iroqda fuqaro — chaqirilgan raqam; UCM uni "998…" yoki "9…" ko'rinishida beradi
+    const outbound = cdr.direction === CallDirection.OUTBOUND;
+    const calledNumber = outbound ? normalizePhone(cdr.calledNumber) : cdr.calledNumber;
     const [agentId, queue, citizen] = await Promise.all([
       cdr.extension ? this.agentIdByExtension(cdr.extension) : Promise.resolve(null),
       cdr.queue ? this.prisma.queue.findUnique({ where: { pbxNumber: cdr.queue }, select: { id: true } }) : null,
-      this.prisma.citizen.findUnique({ where: { phone: callerNumber }, select: { id: true } }),
+      this.prisma.citizen.findUnique({ where: { phone: outbound ? calledNumber : callerNumber }, select: { id: true } }),
     ]);
 
     const data = {
       direction: cdr.direction,
       callerNumber,
-      calledNumber: cdr.calledNumber,
+      calledNumber,
       queueId: queue?.id,
       agentId,
       citizenId: citizen?.id,
@@ -130,6 +139,12 @@ export class TelephonyService implements OnModuleInit, OnModuleDestroy {
     await this.recordings
       .attach(call.id, cdr.pbxCallId, cdr.recordingFile, data.talkSeconds)
       .catch((err) => this.logger.error(`Yozuv saqlanmadi: ${cdr.pbxCallId}`, err instanceof Error ? err.stack : String(err)));
+    // Chiquvchi qo'ng'iroq tarif bo'yicha narxlanadi (F-BIL-03); xato CDR'ni to'xtatmaydi
+    if (outbound) {
+      await this.billing
+        .chargeCall(call.id)
+        .catch((err) => this.logger.error(`Qo'ng'iroq narxlanmadi: ${cdr.pbxCallId}`, err instanceof Error ? err.stack : String(err)));
+    }
     return agentId;
   }
 

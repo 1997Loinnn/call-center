@@ -1,4 +1,5 @@
-import { Controller, Get, Param, ParseIntPipe, Query, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query, Req, Res } from '@nestjs/common';
+import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthUser } from '../common/auth-user';
@@ -9,6 +10,16 @@ import { parseRange } from './range';
 import { RecordingsService } from './recordings.service';
 
 const MIME: Record<string, string> = { wav: 'audio/wav', mp3: 'audio/mpeg', opus: 'audio/ogg' };
+
+export class HoldDto {
+  @IsBoolean()
+  hold: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  reason?: string;
+}
 
 @ApiTags('calls')
 @Controller('calls')
@@ -51,5 +62,13 @@ export class RecordingsController {
     }
     stream.on('error', () => res.destroy());
     stream.pipe(res);
+  }
+
+  /** Nizoli yozuvni saqlab qo'yish yoki belgini olib tashlash (supervisor, rahbariyat). */
+  @Post(':id/recording/hold')
+  @HttpCode(200)
+  @RequirePermissions(Permission.RecordingsPlay, Permission.MonitoringView)
+  hold(@Param('id', ParseIntPipe) id: number, @Body() dto: HoldDto, @CurrentUser() user: AuthUser, @Req() req: Request) {
+    return this.recordings.setHold(user, id, dto.hold, dto.reason, requestMeta(req));
   }
 }

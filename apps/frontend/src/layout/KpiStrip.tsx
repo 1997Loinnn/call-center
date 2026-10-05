@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, PhoneOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, ClockCircleOutlined, HourglassOutlined, PhoneOutlined, StopOutlined } from '@ant-design/icons';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api/client';
 import type { Summary } from '../api/types';
@@ -7,7 +7,8 @@ import { P } from '../constants';
 import { formatDuration, formatNumber } from '../format';
 import { TONE, type Tone } from '../theme';
 
-const REFRESH_MS = 60_000;
+// Navbatdagi qo'ng'iroqlar soni tez o'zgaradi: 15 soniyada bir yangilanadi
+const REFRESH_MS = 15_000;
 
 /** Yuqori paneldagi bugungi ko'rsatkichlar. Hisobotlarga ruxsati borlarga ko'rinadi. */
 export default function KpiStrip() {
@@ -34,13 +35,13 @@ export default function KpiStrip() {
   if (!allowed) return <div className="kpi-strip" />;
 
   const calls = data?.callsToday;
-  const overdue = data?.tickets.overdue ?? 0;
+  const waiting = calls?.waiting ?? null;
   const items: { label: string; value: string; icon: ReactNode; tone: Tone }[] = [
     { label: "Qo'ng'iroqlar", value: calls ? formatNumber(calls.total) : '—', icon: <PhoneOutlined />, tone: 'teal' },
+    { label: "O'rt. suhbat", value: calls ? formatDuration(calls.avgTalkSeconds) : '—', icon: <ClockCircleOutlined />, tone: 'teal' },
     { label: 'Javob berildi', value: calls ? formatNumber(calls.answered) : '—', icon: <CheckCircleOutlined />, tone: 'green' },
-    { label: 'Kutib uzildi', value: calls ? formatNumber(calls.abandoned) : '—', icon: <CloseCircleOutlined />, tone: 'red' },
-    { label: "O'rt. kutish", value: calls ? formatDuration(calls.avgWaitSeconds) : '—', icon: <ClockCircleOutlined />, tone: 'teal' },
-    { label: "Muddati o'tgan", value: data ? formatNumber(overdue) : '—', icon: <WarningOutlined />, tone: overdue > 0 ? 'red' : 'grey' },
+    { label: 'Navbatda', value: waiting === null ? '—' : formatNumber(waiting), icon: <HourglassOutlined />, tone: waiting ? 'amber' : 'grey' },
+    { label: 'Javobsiz', value: calls ? formatNumber(calls.abandoned) : '—', icon: <StopOutlined />, tone: calls?.abandoned ? 'red' : 'grey' },
   ];
 
   return (

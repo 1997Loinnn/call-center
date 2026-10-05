@@ -51,7 +51,7 @@ export class TelephonyController {
   /** Ishlab chiqish uchun: PBX_DRIVER=mock bo'lganda kiruvchi qo'ng'iroqni taqlid qiladi. */
   @Post('dev/simulate-call')
   @RequirePermissions(Permission.TelephonyUse)
-  simulate(@CurrentUser() user: AuthUser, @Body() dto: PhoneNumberDto) {
+  simulate(@CurrentUser() user: AuthUser, @Body() dto: PhoneNumberDto): Promise<{ pbxCallId: string }> {
     return this.telephony.simulateIncomingCall(user, dto.number);
   }
 }

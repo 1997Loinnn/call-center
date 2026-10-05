@@ -89,6 +89,8 @@ model OrgUnit {
   routingRules    RoutingRule[]
   ticketEvents    TicketEvent[]
   callCharges     CallCharge[]
+  ticketShares    TicketParticipant[]
+  costLimits      CostLimit[]
 
   @@index([parentId])
   @@index([path])
@@ -116,7 +118,9 @@ model User {
   sipExtension    String?   @unique @db.VarChar(16) // UCM6510 dagi ichki raqam
   languages       String[]  @default(["uz"]) // navbat ko'nikmalari: uz, ru
   isActive        Boolean   @default(true)
-  twoFactorSecret String? // TOTP (rahbariyat, supervisor, admin uchun)
+  twoFactorSecret    String? // TOTP kaliti, shifrlangan (rahbariyat, supervisor, admin uchun)
+  twoFactorEnabledAt DateTime? // null — 2FA yoqilmagan (kalit yaratilgan bo'lsa ham tasdiqlanmagan)
+  twoFactorLastStep  Int? // oxirgi ishlatilgan TOTP qadami: bir kod ikki marta ishlatilmaydi
   failedLogins    Int       @default(0)
   lockedUntil     DateTime?
   lastLoginAt     DateTime?
@@ -141,9 +145,36 @@ model User {
   messages         Message[]
   notifications    Notification[]
   auditLogs        AuditLog[]
+  assignedTasks    TicketTask[]        @relation("TaskAssignee")
+  createdTasks     TicketTask[]        @relation("TaskCreatedBy")
+  campaigns        Campaign[]
+  campaignContacts CampaignContact[]
+  alertsAcked      Alert[]             @relation("AlertAcknowledgedBy")
+  alertsResolved   Alert[]             @relation("AlertResolvedBy")
+  exportTemplates  ExportTemplate[]
+  ticketShares     TicketParticipant[]
+  queueMemberships QueueMember[]
+  loginCodes       LoginCode[]
+  costLimits       CostLimit[]
 
   @@index([orgUnitId])
   @@map("users")
+}
+
+// SMS orqali kirish kodi (bir martalik, 5 daqiqa, 5 urinish). Kodning o'zi emas, xeshi saqlanadi.
+model LoginCode {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("login_codes")
 }
 
 model Role {
@@ -177,22 +208,25 @@ model UserRole {
 
 model Citizen {
   id         Int      @id @default(autoincrement())
-  phone      String   @unique @db.VarChar(20) // E.164: +998901234567
-  fullName   String?
-  pinfl      String? // JShShIR — ilova darajasida shifrlanadi
-  regionId   Int?
-  districtId Int?
-  address    String?
-  language   String?  @db.VarChar(5)
-  note       String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  phone       String   @unique @db.VarChar(20) // E.164: +998901234567
+  extraPhones String[] @default([]) // qo'shimcha aloqa raqamlari (E.164)
+  fullName    String?
+  pinfl       String? // JShShIR — ilova darajasida shifrlanadi
+  regionId    Int?
+  districtId  Int?
+  address     String?
+  language    String?  @db.VarChar(5)
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  region        Region?        @relation(fields: [regionId], references: [id])
-  district      District?      @relation(fields: [districtId], references: [id])
-  tickets       Ticket[]
-  calls         Call[]
-  conversations Conversation[]
+  region           Region?           @relation(fields: [regionId], references: [id])
+  district         District?         @relation(fields: [districtId], references: [id])
+  tickets          Ticket[]
+  calls            Call[]
+  conversations    Conversation[]
+  campaignContacts CampaignContact[]
+  smsMessages      SmsMessage[]
 
   @@map("citizens")
 }
@@ -245,16 +279,19 @@ model Category {
   code           String  @unique @db.VarChar(64)
   nameUz         String
   nameRu         String?
-  slaDays        Int     @default(15) // ijro muddati, kun
-  isConfidential Boolean @default(false) // masalan, korrupsiya xabarlari
-  isActive       Boolean @default(true)
-  sortOrder      Int     @default(0)
+  slaDays        Int          @default(15) // ijro muddati, kun
+  isConfidential Boolean      @default(false) // masalan, korrupsiya xabarlari
+  isActive       Boolean      @default(true)
+  sortOrder      Int          @default(0)
+  // Mavzu operator kartasida qaysi murojaat turlarida chiqadi; bo'sh = barcha turlarda
+  ticketTypes    TicketType[] @default([])
 
   parent       Category?          @relation("CategoryTree", fields: [parentId], references: [id])
   children     Category[]         @relation("CategoryTree")
   tickets      Ticket[]
   routingRules RoutingRule[]
   articles     KnowledgeArticle[]
+  ticketTopics TicketTopic[]
 
   @@map("categories")
 }
@@ -299,28 +336,36 @@ model Ticket {
   assignedOrgUnitId Int?
   assigneeId        Int?
   dueAt             DateTime?
-  escalatedAt       DateTime?
+  dueSoonNotifiedAt DateTime? // muddat yaqinlashgani haqida eslatma yuborilgan vaqt (F-CRM-05)
+  escalatedAt       DateTime? // muddat o'tib, yuqori bo'linmaga eskalatsiya qilingan vaqt
   answer            String?
   answeredAt        DateTime?
   closedAt          DateTime?
   duplicateOfId     Int?
+  // Matndagi kalit so'zlar bo'yicha belgilar (F-AI-04): corruption | threat | escalation
+  aiFlags           String[]      @default([])
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  category        Category?      @relation(fields: [categoryId], references: [id])
-  citizen         Citizen?       @relation(fields: [citizenId], references: [id])
-  region          Region?        @relation(fields: [regionId], references: [id])
-  district        District?      @relation(fields: [districtId], references: [id])
-  createdBy       User?          @relation("TicketCreatedBy", fields: [createdById], references: [id])
-  assignedOrgUnit OrgUnit?       @relation("TicketAssignedOrgUnit", fields: [assignedOrgUnitId], references: [id])
-  assignee        User?          @relation("TicketAssignee", fields: [assigneeId], references: [id])
-  duplicateOf     Ticket?        @relation("TicketDuplicates", fields: [duplicateOfId], references: [id])
-  duplicates      Ticket[]       @relation("TicketDuplicates")
-  events          TicketEvent[]
-  attachments     Attachment[]
-  calls           Call[]
-  surveys         Survey[]
-  conversations   Conversation[]
+  category         Category?         @relation(fields: [categoryId], references: [id])
+  citizen          Citizen?          @relation(fields: [citizenId], references: [id])
+  region           Region?           @relation(fields: [regionId], references: [id])
+  district         District?         @relation(fields: [districtId], references: [id])
+  createdBy        User?             @relation("TicketCreatedBy", fields: [createdById], references: [id])
+  assignedOrgUnit  OrgUnit?          @relation("TicketAssignedOrgUnit", fields: [assignedOrgUnitId], references: [id])
+  assignee         User?             @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  duplicateOf      Ticket?           @relation("TicketDuplicates", fields: [duplicateOfId], references: [id])
+  duplicates       Ticket[]          @relation("TicketDuplicates")
+  events           TicketEvent[]
+  attachments      Attachment[]
+  calls            Call[]
+  surveys          Survey[]
+  conversations    Conversation[]
+  tasks            TicketTask[]
+  campaignContacts CampaignContact[]
+  smsMessages      SmsMessage[]
+  extraTopics      TicketTopic[]
+  participants     TicketParticipant[]
 
   @@index([status, dueAt])
   @@index([assignedOrgUnitId, status])
@@ -374,6 +419,58 @@ model Attachment {
   @@map("attachments")
 }
 
+// Murojaat bo'yicha ichki vazifalar ("Vazifalar" tabi): masalan, "arxivdan nusxa olish"
+model TicketTask {
+  id          Int       @id @default(autoincrement())
+  ticketId    Int
+  title       String
+  assigneeId  Int?
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdById Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
+  assignee  User?  @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdBy User?  @relation("TaskCreatedBy", fields: [createdById], references: [id])
+
+  @@index([ticketId])
+  @@index([assigneeId, completedAt])
+  @@map("ticket_tasks")
+}
+
+// Murojaatning qo'shimcha mavzulari (operator bir nechta mavzu tanlaganda). Asosiy mavzu — tickets.categoryId:
+// yo'naltirish va ijro muddati u bo'yicha; hisobotlarda asosiy va qo'shimcha mavzular birga sanaladi.
+model TicketTopic {
+  ticketId   Int
+  categoryId Int
+
+  ticket   Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@id([ticketId, categoryId])
+  @@index([categoryId])
+  @@map("ticket_topics")
+}
+
+// Ishtirokchi bo'linmalar (prototip: "Ishtirokchilar"): asosiy mas'uldan tashqari murojaat ustida ishlaydigan
+// bo'linmalar. Ularning xodimlari murojaatni o'z ko'rish doirasi bo'yicha ko'radi.
+model TicketParticipant {
+  ticketId  Int
+  orgUnitId Int
+  addedById Int?
+  createdAt DateTime @default(now())
+
+  ticket  Ticket  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  orgUnit OrgUnit @relation(fields: [orgUnitId], references: [id])
+  addedBy User?   @relation(fields: [addedById], references: [id])
+
+  @@id([ticketId, orgUnitId])
+  @@index([orgUnitId])
+  @@map("ticket_participants")
+}
+
 // ───────────────────────────── Telefoniya ─────────────────────────────
 
 enum CallDirection {
@@ -408,16 +505,119 @@ enum CallbackStatus {
 }
 
 model Queue {
-  id        Int     @id @default(autoincrement())
-  pbxNumber String  @unique @db.VarChar(16) // UCM6510 dagi navbat raqami
-  name      String
-  language  String? @db.VarChar(5)
-  isActive  Boolean @default(true)
+  id                   Int     @id @default(autoincrement())
+  pbxNumber            String  @unique @db.VarChar(16) // UCM6510 dagi navbat raqami
+  name                 String
+  description          String?
+  language             String? @db.VarChar(5)
+  isActive             Boolean @default(true)
+  // Navbat qoidalari (F-TEL-03..05). "PBX bilan sinxronlash" orqali UCM6510 ga yuklanadi.
+  strategy             String  @default("longest_idle") @db.VarChar(32) // longest_idle | ring_all | round_robin | fewest_calls | random
+  maxWaitSeconds       Int     @default(120) // shundan oshsa fuqaroga qayta qo'ng'iroq taklif qilinadi
+  callbackEnabled      Boolean @default(true)
+  announcePosition     Boolean @default(true) // navbatdagi o'rnini eshittirish (F-TEL-04)
+  announceEverySeconds Int     @default(45)
+  musicOnHold          String  @default("default") @db.VarChar(64)
+  wrapUpSeconds        Int     @default(15) // qo'ng'iroqdan keyingi ish vaqti
+  isRestricted         Boolean @default(false) // faqat biriktirilgan operatorlar (masalan, korrupsiya xabarlari)
 
-  calls     Call[]
-  callbacks CallbackRequest[]
+  calls        Call[]
+  callbacks    CallbackRequest[]
+  campaigns    Campaign[]
+  members      QueueMember[]
+  ivrOptions   IvrOption[]
+  ivrFallbacks IvrMenu[]         @relation("IvrFallbackQueue")
 
   @@map("queues")
+}
+
+// Navbat a'zolari: til va yo'nalish ko'nikmasi. penalty 0 — asosiy, 1–3 — zaxira
+// (qo'ng'iroq avval kichik penalty'li bo'sh operatorga beriladi).
+model QueueMember {
+  queueId   Int
+  userId    Int
+  penalty   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  queue Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([queueId, userId])
+  @@index([userId])
+  @@map("queue_members")
+}
+
+// ───────────────────────────── IVR (F-TEL-02) ─────────────────────────────
+
+enum IvrAction {
+  SUBMENU       // boshqa menyuga o'tish
+  QUEUE         // navbatga ulash
+  TICKET_STATUS // murojaat raqami bo'yicha holatni aytish (F-CRM-10)
+  CALLBACK      // qayta qo'ng'iroq buyurtmasi
+  VOICEMAIL     // ovozli xabar qoldirish — murojaat sifatida ro'yxatga olinadi
+  PLAYBACK      // xabarni eshittirib, menyuga qaytish
+  REPEAT        // menyuni qayta eshittirish
+  HANGUP        // xayrlashib uzish
+}
+
+// Ovozli xabarlar: diktor matni va yozib olingan audio fayl (administrator panelidan almashtiriladi)
+model VoicePrompt {
+  id              Int      @id @default(autoincrement())
+  name            String
+  language        String   @default("uz") @db.VarChar(5)
+  text            String // diktor o'qiydigan matn
+  fileName        String?
+  storageKey      String? // VOICE_PROMPTS_DIR ichidagi fayl
+  mimeType        String?  @db.VarChar(64)
+  sizeBytes       Int?
+  updatedById     Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  menus   IvrMenu[]   @relation("IvrMenuPrompt")
+  options IvrOption[]
+
+  @@map("voice_prompts")
+}
+
+model IvrMenu {
+  id              Int      @id @default(autoincrement())
+  code            String   @unique @db.VarChar(64) // UCM6510 dagi IVR nomi
+  name            String
+  language        String?  @db.VarChar(5)
+  promptId        Int?
+  timeoutSeconds  Int      @default(5) // tugma bosilishini kutish
+  maxRetries      Int      @default(3) // noto'g'ri tugma yoki javobsizlikdan keyin qayta eshittirish
+  fallbackQueueId Int? // urinishlar tugasa: shu navbat; null — xayrlashib uzish
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  prompt        VoicePrompt? @relation("IvrMenuPrompt", fields: [promptId], references: [id], onDelete: SetNull)
+  fallbackQueue Queue?       @relation("IvrFallbackQueue", fields: [fallbackQueueId], references: [id], onDelete: SetNull)
+  options       IvrOption[]  @relation("IvrMenuOptions")
+  incoming      IvrOption[]  @relation("IvrOptionTarget")
+
+  @@map("ivr_menus")
+}
+
+model IvrOption {
+  id           Int       @id @default(autoincrement())
+  menuId       Int
+  digit        String    @db.VarChar(1) // 0–9, *, #
+  label        String
+  action       IvrAction
+  queueId      Int?
+  targetMenuId Int?
+  promptId     Int? // PLAYBACK: eshittiriladigan xabar
+
+  menu       IvrMenu      @relation("IvrMenuOptions", fields: [menuId], references: [id], onDelete: Cascade)
+  queue      Queue?       @relation(fields: [queueId], references: [id])
+  targetMenu IvrMenu?     @relation("IvrOptionTarget", fields: [targetMenuId], references: [id])
+  prompt     VoicePrompt? @relation(fields: [promptId], references: [id], onDelete: SetNull)
+
+  @@unique([menuId, digit])
+  @@map("ivr_options")
 }
 
 model Call {
@@ -450,6 +650,7 @@ model Call {
   transcript       Transcript?
   qaEvaluations    QaEvaluation[]
   callbackRequests CallbackRequest[]
+  campaignContacts CampaignContact[]
 
   @@index([startedAt])
   @@index([agentId, startedAt])
@@ -522,6 +723,86 @@ model BlacklistedNumber {
   @@map("blacklisted_numbers")
 }
 
+// ─────────────────────── Chiquvchi kampaniyalar ───────────────────────
+
+enum CampaignType {
+  CALLBACK // murojaat bo'yicha qayta aloqa
+  SURVEY   // xizmat sifati so'rovnomasi
+  REMINDER // eslatma (masalan, tayyor hujjatni olib ketish)
+  INFORM   // xabardor qilish
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignContactStatus {
+  PENDING      // navbatda
+  REACHED      // bog'lanildi
+  NO_ANSWER    // javob bermadi (yana urinish bor)
+  BUSY         // band (yana urinish bor)
+  CALL_LATER   // keyinroq qo'ng'iroq qilishni so'radi
+  WRONG_NUMBER // noto'g'ri raqam
+  FAILED       // urinishlar tugadi
+}
+
+model Campaign {
+  id          Int            @id @default(autoincrement())
+  name        String
+  type        CampaignType
+  status      CampaignStatus @default(DRAFT)
+  description String?
+  script      String? // operator o'qiydigan matn
+  queueId     Int? // UCM6510 dagi chiquvchi navbat
+  maxAttempts Int            @default(3)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  createdById Int?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  queue     Queue?            @relation(fields: [queueId], references: [id])
+  createdBy User?             @relation(fields: [createdById], references: [id])
+  contacts  CampaignContact[]
+
+  @@index([status])
+  @@map("campaigns")
+}
+
+model CampaignContact {
+  id            Int                   @id @default(autoincrement())
+  campaignId    Int
+  phone         String                @db.VarChar(20)
+  fullName      String?
+  citizenId     Int?
+  ticketId      Int? // qayta aloqa yoki so'rovnoma qaysi murojaat bo'yicha
+  status        CampaignContactStatus @default(PENDING)
+  attempts      Int                   @default(0)
+  lastAttemptAt DateTime?
+  nextAttemptAt DateTime?
+  agentId       Int? // oxirgi qo'ng'iroq qilgan operator
+  callId        Int? // oxirgi urinish qo'ng'irog'i
+  resolved      String?               @db.VarChar(16) // "Masala hal bo'ldimi?": yes | partly | no
+  rating        Int? // 1..5
+  note          String?
+  createdAt     DateTime              @default(now())
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  citizen  Citizen? @relation(fields: [citizenId], references: [id])
+  ticket   Ticket?  @relation(fields: [ticketId], references: [id])
+  agent    User?    @relation(fields: [agentId], references: [id])
+  call     Call?    @relation(fields: [callId], references: [id])
+
+  @@unique([campaignId, phone])
+  @@index([campaignId, status, nextAttemptAt])
+  @@map("campaign_contacts")
+}
+
 // ─────────────────────── Billing (qo'ng'iroqlar xarajati) ───────────────────────
 
 enum TariffDirection {
@@ -564,6 +845,28 @@ model CallCharge {
 
   @@index([orgUnitId, calculatedAt])
   @@map("call_charges")
+}
+
+// Oylik xarajat limiti (F-BIL-05): bo'linma yoki operator uchun; chegaraga yaqinlashganda ogohlantiriladi.
+model CostLimit {
+  id            Int      @id @default(autoincrement())
+  orgUnitId     Int?
+  userId        Int?
+  monthlyAmount Decimal  @db.Decimal(14, 2) // so'm
+  warnPercent   Int      @default(80)
+  // Shu oyda qaysi darajada xabar berilgan: 1 — ogohlantirish, 2 — limitdan oshdi
+  notifiedMonth String?  @db.VarChar(7) // YYYY-MM
+  notifiedLevel Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orgUnit OrgUnit? @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([orgUnitId])
+  @@index([userId])
+  @@map("cost_limits")
 }
 
 // ─────────────────────────── Sifat va sun'iy intellekt ───────────────────────────
@@ -653,12 +956,18 @@ enum MessageDirection {
 model Conversation {
   id            Int                @id @default(autoincrement())
   channel       TicketChannel
-  externalId    String // Telegram chat id, email thread id va h.k.
+  externalId    String // Telegram chat id, email birinchi xat Message-ID si, veb-chat sessiya tokeni
   citizenId     Int?
   ticketId      Int?
   assigneeId    Int?
   status        ConversationStatus @default(OPEN)
+  contactName   String? // Telegram ismi, email jo'natuvchi nomi, veb-chatda kiritilgan ism
+  contactHandle String? // @username yoki email manzil
+  contactPhone  String?            @db.VarChar(20) // Telegram'da tasdiqlangan yoki veb-chatda kiritilgan raqam
+  subject       String? // email mavzusi
+  unreadCount   Int                @default(0) // operator hali o'qimagan kiruvchi xabarlar
   lastMessageAt DateTime           @default(now())
+  closedAt      DateTime?
   createdAt     DateTime           @default(now())
 
   citizen  Citizen?  @relation(fields: [citizenId], references: [id])
@@ -668,6 +977,8 @@ model Conversation {
 
   @@unique([channel, externalId])
   @@index([status, lastMessageAt])
+  @@index([assigneeId, status])
+  @@index([citizenId])
   @@map("conversations")
 }
 
@@ -678,13 +989,17 @@ model Message {
   authorId       Int?
   body           String
   attachments    Json?
-  externalId     String?
+  externalId     String? // Telegram message_id, email Message-ID
+  status         String?          @db.VarChar(16) // OUT: sent | queued | failed
+  error          String?
+  isAuto         Boolean          @default(false) // avtomatik javob (salomlashish, murojaat holati)
   sentAt         DateTime         @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   author       User?        @relation(fields: [authorId], references: [id])
 
   @@index([conversationId, sentAt])
+  @@index([externalId])
   @@map("messages")
 }
 
@@ -704,6 +1019,124 @@ model Notification {
 
   @@index([userId, readAt])
   @@map("notifications")
+}
+
+enum SmsStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+// Fuqaroga yuborilgan SMS (F-NOT-01): murojaat raqami, natija, eslatmalar
+model SmsMessage {
+  id          Int       @id @default(autoincrement())
+  phone       String    @db.VarChar(20)
+  text        String
+  template    String?   @db.VarChar(64) // settings.sms_templates dagi kalit
+  status      SmsStatus @default(QUEUED)
+  citizenId   Int?
+  ticketId    Int?
+  providerId  String?   @db.VarChar(64) // SMS shlyuzidagi xabar id
+  error       String?
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+  deliveredAt DateTime?
+
+  citizen Citizen? @relation(fields: [citizenId], references: [id])
+  ticket  Ticket?  @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@index([phone, createdAt])
+  @@index([status, createdAt])
+  @@map("sms_messages")
+}
+
+// ─────────────────────── Ogohlantirishlar (F-MON-03) ───────────────────────
+
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+  INFO
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED // supervisor "Qabul qildim" bosdi, muammo hali bor
+  RESOLVED
+}
+
+// Limitlar: ko'rsatkich chegaradan oshsa ogohlantirish avtomatik ochiladi
+model AlertRule {
+  id        Int           @id @default(autoincrement())
+  code      String        @unique @db.VarChar(64) // queue.wait.warning, trunk.down, ...
+  name      String
+  metric    String        @db.VarChar(64) // tekshiriladigan ko'rsatkich
+  threshold Int // unit bo'yicha qiymat
+  unit      String        @db.VarChar(16) // seconds | count | percent
+  severity  AlertSeverity
+  isActive  Boolean       @default(true)
+  updatedAt DateTime      @updatedAt
+
+  alerts Alert[]
+
+  @@map("alert_rules")
+}
+
+model Alert {
+  id               Int           @id @default(autoincrement())
+  ruleId           Int?
+  severity         AlertSeverity
+  status           AlertStatus   @default(ACTIVE)
+  message          String
+  source           String // "UCM6510 · queue 6500", "NAS · /recordings"
+  value            Int? // aniqlangan qiymat (qoida unit'ida)
+  details          Json?
+  startedAt        DateTime      @default(now())
+  acknowledgedAt   DateTime?
+  acknowledgedById Int?
+  resolvedAt       DateTime?
+  resolvedById     Int? // resolvedAt bor, resolvedById yo'q = avtomatik yopildi
+
+  rule           AlertRule? @relation(fields: [ruleId], references: [id])
+  acknowledgedBy User?      @relation("AlertAcknowledgedBy", fields: [acknowledgedById], references: [id])
+  resolvedBy     User?      @relation("AlertResolvedBy", fields: [resolvedById], references: [id])
+
+  @@index([status, startedAt])
+  @@index([startedAt])
+  @@map("alerts")
+}
+
+// ─────────────────────── Eksport shablonlari (F-REP-05) ───────────────────────
+
+enum ExportFormat {
+  XLSX
+  PDF
+  DOCX
+  CSV
+}
+
+model ExportTemplate {
+  id             Int          @id @default(autoincrement())
+  code           String       @unique @db.VarChar(64)
+  name           String
+  format         ExportFormat
+  source         String       @db.VarChar(32) // daily_summary | tickets | org_units | ticket_answer | calls
+  columns        String[] // jadval ustunlari yoki DOCX shablon o'zgaruvchilari
+  schedule       String?      @db.VarChar(64) // cron, masalan "0 18 * * *"; null = qo'lda
+  recipientRoles String[]     @default([]) // jadval bo'yicha kimga yuboriladi (rol kodlari)
+  isActive       Boolean      @default(true)
+  // Jadval bo'yicha oxirgi yuborish: vaqt, natija (ok | partial | error) va izoh
+  lastRunAt      DateTime?
+  lastRunStatus  String?      @db.VarChar(16)
+  lastRunNote    String?
+  createdById    Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  createdBy User? @relation(fields: [createdById], references: [id])
+
+  @@map("export_templates")
 }
 
 // Faqat qo'shiladi: UPDATE va DELETE ma'lumotlar bazasi triggeri bilan taqiqlangan

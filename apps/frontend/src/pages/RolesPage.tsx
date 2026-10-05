@@ -1,5 +1,6 @@
 import { CheckOutlined, DeleteOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import { Alert, App, Button, Card, Checkbox, Empty, Form, Input, Modal, Popconfirm, Segmented, Select, Skeleton, Table, Tag, Tooltip } from 'antd';
+import AccessNav from '../components/AccessNav';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useMemo, useState } from 'react';
 import { api, errorMessage } from '../api/client';
@@ -164,6 +165,7 @@ export default function RolesPage() {
           <span className="page-sub">O'zgarishlar foydalanuvchining keyingi so'rovidan kuchga kiradi va audit jurnaliga yoziladi</span>
         </div>
         <div className="roles-actions">
+          <AccessNav />
           <Segmented
             value={view}
             onChange={(v) => setView(v as 'roles' | 'matrix')}

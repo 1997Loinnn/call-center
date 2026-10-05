@@ -1,5 +1,5 @@
 import { createReadStream } from 'node:fs';
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import type { Readable } from 'node:stream';
 import type { ByteRange } from './range';
@@ -15,6 +15,8 @@ export interface RecordingStorage {
   size(key: string): Promise<number | null>;
   read(key: string, range?: ByteRange): Readable;
   write(key: string, data: Buffer): Promise<void>;
+  /** Saqlash muddati tugagan faylni o'chiradi; fayl yo'q bo'lsa xato bermaydi. */
+  remove(key: string): Promise<void>;
 }
 
 export class LocalRecordingStorage implements RecordingStorage {
@@ -47,5 +49,10 @@ export class LocalRecordingStorage implements RecordingStorage {
     const file = this.path(key);
     await mkdir(dirname(file), { recursive: true });
     await writeFile(file, data);
+  }
+
+  /** Faylni o'chiradi (masalan, almashtirilgan ovozli xabar); yo'q bo'lsa xato bermaydi. */
+  async remove(key: string): Promise<void> {
+    await rm(this.path(key), { force: true });
   }
 }

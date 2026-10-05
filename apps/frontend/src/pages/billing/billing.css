@@ -1,0 +1,41 @@
+/* ---------- Tariflar va xarajatlar ---------- */
+.billing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.billing-tabs {
+  margin-bottom: 16px;
+}
+
+.billing-tab-warn {
+  margin-left: 6px;
+  color: #b45309;
+}
+
+.billing-note {
+  margin: 12px 0 0;
+}
+
+/* Ulush ustuni: bitta tus, yo'nalish/bo'linmaning eng katta summasiga nisbatan */
+.share-bar {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #eef0f3;
+}
+
+.share-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: #0b6b6b;
+}
+
+.billing-row-actions {
+  display: inline-flex;
+  gap: 2px;
+}

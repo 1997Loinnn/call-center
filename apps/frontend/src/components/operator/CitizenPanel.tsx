@@ -3,6 +3,7 @@ import { Avatar, Button, Card, Form, Input, Segmented, Select, Skeleton } from '
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { CitizenCard, Region } from '../../api/types';
+import { CHANNEL_LABELS } from '../../constants';
 import { formatDate, formatDateTime, formatDuration, formatPhone } from '../../format';
 import StatusTag from '../StatusTag';
 
@@ -85,6 +86,7 @@ export default function CitizenPanel({ card, loading, regions, onSearch, onManua
           </label>
           <Input
             id="citizen-query"
+            data-hotkey="search"
             allowClear
             placeholder="+998 90 123 45 67 yoki 1097-2026-000123"
             value={query}
@@ -106,6 +108,11 @@ export default function CitizenPanel({ card, loading, regions, onSearch, onManua
                 <span className="citizen-head-text">
                   <span className="citizen-name">{name}</span>
                   <span className="mono citizen-phone">{formatPhone(card.phone)}</span>
+                  {!!citizen?.extraPhones?.length && (
+                    <span className="mono citizen-phone" title="Qo'shimcha aloqa raqamlari">
+                      + {citizen.extraPhones.map(formatPhone).join(', ')}
+                    </span>
+                  )}
                 </span>
                 <Button size="small" onClick={onClear}>
                   Boshqa fuqaro
@@ -143,6 +150,23 @@ export default function CitizenPanel({ card, loading, regions, onSearch, onManua
                   ))
                 )}
               </div>
+              {/* F-OMNI-04: Telegram, veb-chat va email yozishmalari ham shu fuqaro tarixida */}
+              {!!card.conversations?.length && (
+                <div className="citizen-history">
+                  <span className="citizen-history-title">Yozishmalar ({card.conversations.length})</span>
+                  {card.conversations.slice(0, HISTORY_SHOWN).map((c) => (
+                    <Link key={c.id} to={`/omnichannel?c=${c.id}`} className="history-item">
+                      <span className="history-text">
+                        <span className="mono history-no">
+                          {CHANNEL_LABELS[c.channel]} · {formatDateTime(c.lastMessageAt)}
+                        </span>
+                        <span className="history-subject">{c.ticket ? `Murojaat ${c.ticket.number}` : (c.subject ?? (c.status === 'CLOSED' ? 'Yopilgan suhbat' : 'Faol suhbat'))}</span>
+                      </span>
+                      <RightOutlined />
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <>

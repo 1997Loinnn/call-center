@@ -1,0 +1,220 @@
+/* ---------- CRM sozlamalari (prototip: Sozlamalar artboardi) ---------- */
+.crm-header {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.crm-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .crm-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Toifalar ro'yxati */
+.cat-list .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.cat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cat-item:hover {
+  background: #f6f7f9;
+}
+
+.cat-item.is-selected {
+  background: #f1f7f7;
+}
+
+.cat-item.is-inactive .cat-item-name {
+  color: var(--muted);
+}
+
+.cat-item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cat-item-name {
+  font-weight: 500;
+}
+
+.cat-item.is-selected .cat-item-name {
+  font-weight: 600;
+}
+
+.cat-item-sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.cat-secret {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--sider);
+  color: #fff;
+  font-size: 11px;
+}
+
+.cat-off.ant-tag {
+  margin: 0;
+  font-size: 11px;
+}
+
+/* Tanlangan toifa */
+.cat-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cat-title.ant-typography {
+  margin: 0 !important;
+  font-size: 17px;
+}
+
+.cat-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.cat-sla {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.cat-note-alert {
+  margin-bottom: 12px;
+}
+
+.cat-types {
+  width: 100%;
+}
+
+.cat-type-tag.ant-tag {
+  margin: 2px 4px 2px 0;
+  border: 0;
+  border-radius: 6px;
+  background: #eef0f3;
+  color: #374151;
+  font-size: 12px;
+}
+
+.cat-muted.ant-typography,
+.cat-row-off td {
+  color: var(--muted) !important;
+}
+
+.cat-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.cat-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+/* Yo'naltirish qoidalari */
+.routing-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .routing-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.routing-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.probe-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.probe-result {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f1f7f7;
+}
+
+.probe-target {
+  color: var(--brand-dark);
+  font-weight: 600;
+}
+
+.auto-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auto-list .setting-row {
+  align-items: flex-start;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.auto-dup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.auto-dup .ant-input-number {
+  width: 64px;
+}
+
+.auto-list .panel-note {
+  margin: 8px 0;
+}

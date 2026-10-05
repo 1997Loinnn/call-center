@@ -1,0 +1,210 @@
+/* ---------- Katta ekran (videodevor) ---------- */
+.wall {
+  display: flex;
+  flex-direction: column;
+  gap: 2vh;
+  min-height: 100vh;
+  padding: 2.5vh 2.5vw;
+  background: #0b1520;
+  color: #e5edf5;
+}
+
+.wall-head {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.wall-title {
+  flex: 1;
+  font-size: clamp(18px, 2.2vw, 34px);
+  font-weight: 600;
+}
+
+.wall-clock {
+  font-size: clamp(20px, 2.6vw, 40px);
+  color: #8cc4c1;
+}
+
+.wall-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wall-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #1e3346;
+  border-radius: 8px;
+  background: #0f1e2b;
+  color: #c3ced9;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.wall-loading {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  color: #93a3b5;
+  font-size: 24px;
+}
+
+.wall-kpis {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 1.2vw;
+}
+
+@media (max-width: 1100px) {
+  .wall-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.wall-kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 2vh 1.2vw;
+  border: 1px solid #1e3346;
+  border-top: 6px solid #2b4a63;
+  border-radius: 12px;
+  background: #0f1e2b;
+}
+
+.wall-kpi.is-good {
+  border-top-color: #22c55e;
+}
+
+.wall-kpi.is-warn {
+  border-top-color: #f59e0b;
+}
+
+.wall-kpi.is-bad {
+  border-top-color: #ef4444;
+  background: #2a1416;
+}
+
+.wall-kpi-value {
+  overflow: hidden;
+  font-size: clamp(28px, 3.6vw, 88px);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wall-kpi-label {
+  color: #93a3b5;
+  font-size: clamp(12px, 1.1vw, 20px);
+}
+
+.wall-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 1.2vw;
+}
+
+@media (max-width: 1100px) {
+  .wall-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wall-panel {
+  padding: 2vh 1.2vw;
+  border: 1px solid #1e3346;
+  border-radius: 12px;
+  background: #0f1e2b;
+}
+
+.wall-panel h2 {
+  margin: 0 0 1.5vh;
+  color: #c3ced9;
+  font-size: clamp(16px, 1.5vw, 26px);
+  font-weight: 600;
+}
+
+.wall-status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 2vh;
+}
+
+.wall-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 2px solid;
+  border-radius: 999px;
+  font-size: clamp(13px, 1.1vw, 20px);
+}
+
+.wall-status-count {
+  font-size: clamp(16px, 1.5vw, 28px);
+  font-weight: 600;
+}
+
+.wall-agents {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.wall-agent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-left: 6px solid;
+  border-radius: 8px;
+  background: #162838;
+}
+
+.wall-agent-name {
+  overflow: hidden;
+  font-size: clamp(13px, 1vw, 18px);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wall-agent-sub {
+  color: #93a3b5;
+  font-size: clamp(12px, 0.9vw, 16px);
+}
+
+.wall-queues {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(14px, 1.2vw, 22px);
+}
+
+.wall-queues td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #1e3346;
+}
+
+.wall-queues tr.has-waiting td {
+  color: #fcd34d;
+}
+
+.wall-num {
+  text-align: right;
+}
+
+.wall-muted,
+.wall-foot {
+  color: #93a3b5;
+}
+
+.wall-foot {
+  font-size: 13px;
+  text-align: right;
+}

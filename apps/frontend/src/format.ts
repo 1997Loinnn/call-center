@@ -23,3 +23,12 @@ export const isOverdue =(dueAt: string | null, status: TicketStatus): boolean =>
   !!dueAt && status !== 'CLOSED' && dayjs(dueAt).isBefore(dayjs());
 
 export const formatNumber = (value: number): string => new Intl.NumberFormat('uz-UZ').format(value);
+
+/** Holat davomiyligi: soatdan kam bo'lsa "07:48", aks holda "1:12:40". */
+export function formatClock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}

@@ -1,11 +1,12 @@
 import { Alert, App, Form } from 'antd';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, errorMessage } from '../api/client';
 import type { Category, CitizenCard, OrgTreeNode, Region, TelephonyInfo, TicketListItem } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
 import CallBar, { type ActiveCall } from '../components/operator/CallBar';
 import CallScript from '../components/operator/CallScript';
 import CitizenPanel, { type ManualCitizen } from '../components/operator/CitizenPanel';
+import KnowledgeCard from '../components/operator/KnowledgeCard';
 import TicketForm, { type TicketFormValues } from '../components/TicketForm';
 import { P } from '../constants';
 import { useAsync } from '../hooks/useAsync';
@@ -96,6 +97,23 @@ export default function OperatorPage() {
     if (card) void loadCard(card.phone);
   };
 
+  // Ctrl+S — murojaatni saqlash (Dizayn tizimi → Klaviatura yorliqlari); brauzerning "sahifani saqlash" oynasi ochilmaydi
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        form.submit();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [form]);
+
+  // Tanlangan asosiy mavzuning toifasi: bilimlar bazasidan shu toifa maqolalari taklif qilinadi
+  const topics = Form.useWatch('topics', form) as number[] | undefined;
+  const topicCategory = categories.find((c) => c.id === topics?.[0]);
+  const kbCategoryId = topicCategory ? (topicCategory.parentId ?? topicCategory.id) : undefined;
+
   const onRouteChange = useCallback((name: string | undefined, slaDays: number | undefined) => setRoute({ name, slaDays }), []);
 
   return (
@@ -128,6 +146,7 @@ export default function OperatorPage() {
             onClear={() => setCard(null)}
           />
           <CallScript routeName={route.name} slaDays={route.slaDays} />
+          <KnowledgeCard categoryId={kbCategoryId} />
         </div>
       </div>
     </>

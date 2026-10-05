@@ -6,10 +6,21 @@ import { closeSocket } from '../realtime/socket';
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  /** Kirish javobi: foydalanuvchi bo'lsa sessiya ochiladi; ikkinchi bosqich kerak bo'lsa — challenge qaytadi */
+  completeLogin: (response: LoginResponse) => MfaStep | null;
   logout: () => Promise<void>;
   can: (permission: string) => boolean;
+  /** Massiv: ruxsatlardan kamida bittasi bo'lsa yetarli */
+  canAny: (permission: string | string[]) => boolean;
 }
+
+/** Ikkinchi bosqich: challenge (5 daqiqa) va ilova hali ulanmaganmi (setup) */
+export interface MfaStep {
+  challenge: string;
+  setup: boolean;
+}
+
+export type LoginResponse = { user: AuthUser } | { mfa: MfaStep };
 
 const AuthContext = createContext<AuthState | null>(null);
 
@@ -22,6 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       closeSocket();
       setUser(null);
     });
+    // Fuqaro uchun ochiq veb-chat: xodim sessiyasi tekshirilmaydi
+    if (window.location.pathname.startsWith('/webchat')) {
+      setLoading(false);
+      return;
+    }
     api
       .get<AuthUser>('/auth/me')
       .then((res) => setUser(res.data))
@@ -29,9 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await api.post<{ user: AuthUser }>('/auth/login', { username, password });
-    setUser(res.data.user);
+  const completeLogin = useCallback((response: LoginResponse): MfaStep | null => {
+    if ('user' in response) {
+      setUser(response.user);
+      return null;
+    }
+    return response.mfa;
   }, []);
 
   const logout = useCallback(async () => {
@@ -41,8 +60,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const can = useCallback((permission: string) => !!user?.permissions.includes(permission), [user]);
+  const canAny = useCallback(
+    (permission: string | string[]) => (Array.isArray(permission) ? permission.some(can) : can(permission)),
+    [can],
+  );
 
-  const value = useMemo(() => ({ user, loading, login, logout, can }), [user, loading, login, logout, can]);
+  const value = useMemo(() => ({ user, loading, completeLogin, logout, can, canAny }), [user, loading, completeLogin, logout, can, canAny]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

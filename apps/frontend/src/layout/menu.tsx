@@ -6,19 +6,24 @@ import {
   ApartmentOutlined,
   AuditOutlined,
   BarChartOutlined,
-  BranchesOutlined,
+  ControlOutlined,
+  FolderOutlined,
   CustomerServiceOutlined,
   DashboardOutlined,
   ExportOutlined,
   FileTextOutlined,
   HeartOutlined,
   MessageOutlined,
+  PhoneFilled,
   PhoneOutlined,
   SafetyCertificateOutlined,
   SettingOutlined,
-  TagsOutlined,
   TeamOutlined,
+  UnorderedListOutlined,
+  ReadOutlined,
   ApiOutlined,
+  BookOutlined,
+  WalletOutlined,
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 import { P } from '../constants';
@@ -27,7 +32,10 @@ export interface MenuEntry {
   path: string;
   label: string;
   icon: ReactNode;
-  permission: string;
+  /** Massiv bo'lsa — ruxsatlardan kamida bittasi yetarli */
+  permission: string | string[];
+  /** Menyudagi son: amal kutayotgan murojaatlar, faol ogohlantirishlar yoki javob kutayotgan yozishmalar */
+  badge?: 'tickets' | 'alerts' | 'omni';
 }
 
 export interface MenuGroup {
@@ -37,13 +45,7 @@ export interface MenuGroup {
   items: MenuEntry[];
 }
 
-/** Hali tayyor bo'lmagan modul (PlaceholderPage): menyuda «reja» belgisi bilan chiqadi. */
-export const isPlanned = (path: string): boolean => path.startsWith('/soon/');
-
-/**
- * Menyu guruhlari mavjud "CRM Call Center" (org.imv.uz) tuzilmasiga mos.
- * /soon/... — yo'l xaritasidagi keyingi bosqich modullari (PlaceholderPage).
- */
+/** Menyu guruhlari mavjud "CRM Call Center" (org.imv.uz) tuzilmasiga mos. */
 export const MENU: MenuGroup[] = [
   {
     key: 'crm',
@@ -52,10 +54,11 @@ export const MENU: MenuGroup[] = [
     items: [
       { path: '/dashboard', label: 'Bosh sahifa', icon: <DashboardOutlined />, permission: P.ReportsView },
       { path: '/operator', label: 'Operator paneli', icon: <CustomerServiceOutlined />, permission: P.TicketsCreate },
-      { path: '/tickets', label: 'Murojaatlar', icon: <FileTextOutlined />, permission: P.TicketsRead },
-      { path: '/soon/routing', label: "Yo'naltirish qoidalari", icon: <BranchesOutlined />, permission: P.OrgManage },
-      { path: '/soon/categories', label: 'Murojaat toifalari', icon: <TagsOutlined />, permission: P.SettingsManage },
-      { path: '/soon/export', label: 'Eksport shablonlari', icon: <ExportOutlined />, permission: P.ReportsView },
+      { path: '/tickets', label: 'Murojaatlar', icon: <FileTextOutlined />, permission: P.TicketsRead, badge: 'tickets' },
+      { path: '/knowledge', label: 'Bilimlar bazasi', icon: <BookOutlined />, permission: [P.TicketsCreate, P.TicketsRead, P.KnowledgeManage] },
+      { path: '/crm/routing', label: "Yo'naltirish qoidalari", icon: <ControlOutlined />, permission: P.OrgManage },
+      { path: '/crm/categories', label: 'Toifalar va mavzular', icon: <FolderOutlined />, permission: P.SettingsManage },
+      { path: '/crm/export', label: 'Eksport shablonlari', icon: <ExportOutlined />, permission: [P.ReportsView, P.SettingsManage] },
     ],
   },
   {
@@ -63,24 +66,28 @@ export const MENU: MenuGroup[] = [
     label: 'Telefoniya',
     icon: <PhoneOutlined />,
     items: [
-      { path: '/calls', label: "Qo'ng'iroqlar jurnali", icon: <PhoneOutlined />, permission: P.CallsRead },
-      { path: '/soon/ivr', label: 'Navbatlar va IVR', icon: <ApiOutlined />, permission: P.SettingsManage },
+      { path: '/calls', label: "Qo'ng'iroqlar jurnali", icon: <UnorderedListOutlined />, permission: P.CallsRead },
+      { path: '/campaigns', label: "Chiquvchi qo'ng'iroqlar", icon: <PhoneFilled />, permission: [P.TelephonyUse, P.CampaignsManage] },
+      { path: '/ivr', label: 'Navbatlar va IVR', icon: <ApiOutlined />, permission: [P.SettingsManage, P.MonitoringView] },
+      { path: '/billing', label: 'Tariflar va xarajatlar', icon: <WalletOutlined />, permission: [P.ReportsView, P.SettingsManage] },
     ],
   },
   {
     key: 'messaging',
     label: 'Xabar almashish',
     icon: <MessageOutlined />,
-    items: [{ path: '/soon/omnichannel', label: 'Omnikanal', icon: <MessageOutlined />, permission: P.TicketsCreate }],
+    items: [
+      { path: '/omnichannel', label: 'Omnikanal', icon: <MessageOutlined />, permission: [P.TicketsCreate, P.SettingsManage], badge: 'omni' },
+    ],
   },
   {
     key: 'control',
     label: 'Boshqaruv markazi',
     icon: <FundOutlined />,
     items: [
-      { path: '/soon/live', label: 'Jonli holat', icon: <HeartOutlined />, permission: P.MonitoringView },
-      { path: '/soon/alerts', label: 'Ogohlantirishlar', icon: <AlertOutlined />, permission: P.MonitoringView },
-      { path: '/soon/analytics', label: 'Analitika va hisobotlar', icon: <BarChartOutlined />, permission: P.ReportsView },
+      { path: '/live', label: 'Jonli holat', icon: <HeartOutlined />, permission: P.MonitoringView },
+      { path: '/alerts', label: 'Ogohlantirishlar', icon: <AlertOutlined />, permission: P.MonitoringView, badge: 'alerts' },
+      { path: '/analytics', label: 'Analitika va hisobotlar', icon: <BarChartOutlined />, permission: P.ReportsView },
       { path: '/audit', label: 'Audit jurnali', icon: <AuditOutlined />, permission: P.AuditRead },
     ],
   },
@@ -98,6 +105,9 @@ export const MENU: MenuGroup[] = [
     key: 'system',
     label: 'Tizim',
     icon: <SettingOutlined />,
-    items: [{ path: '/soon/settings', label: 'Sozlamalar', icon: <SettingOutlined />, permission: P.SettingsManage }],
+    items: [{ path: '/settings', label: 'Sozlamalar', icon: <SettingOutlined />, permission: P.SettingsManage }],
   },
 ];
+
+/** Menyu ostidagi alohida band (prototip: "Foydalanuvchi qo'llanmasi") — hamma uchun ochiq. */
+export const HELP_ENTRY: MenuEntry = { path: '/manual', label: "Foydalanuvchi qo'llanmasi", icon: <ReadOutlined />, permission: [] };

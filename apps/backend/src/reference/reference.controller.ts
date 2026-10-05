@@ -12,9 +12,10 @@ export class ReferenceController {
 
   @Get('categories')
   categories() {
+    // Nofaol toifaning mavzulari ham operator kartalarida chiqmaydi
     return this.prisma.category.findMany({
-      where: { isActive: true },
-      select: { id: true, parentId: true, code: true, nameUz: true, nameRu: true, slaDays: true, isConfidential: true, sortOrder: true },
+      where: { isActive: true, OR: [{ parentId: null }, { parent: { isActive: true } }] },
+      select: { id: true, parentId: true, code: true, nameUz: true, nameRu: true, slaDays: true, isConfidential: true, sortOrder: true, ticketTypes: true },
       orderBy: [{ sortOrder: 'asc' }, { nameUz: 'asc' }],
     });
   }

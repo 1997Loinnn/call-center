@@ -15,7 +15,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:fake": "ts-node --transpile-only prisma/faker/index.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"

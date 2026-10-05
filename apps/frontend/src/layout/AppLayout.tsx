@@ -1,9 +1,12 @@
-import { GlobalOutlined, LogoutOutlined } from '@ant-design/icons';
+import { GlobalOutlined, LogoutOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { Avatar, Button, Layout, Menu, Tooltip, type MenuProps } from 'antd';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
-import { isPlanned, MENU } from './menu';
+import { P } from '../constants';
+import { HELP_ENTRY, MENU, type MenuEntry } from './menu';
+import SecurityModal from './SecurityModal';
+import { useMenuBadges } from './useMenuBadges';
 import TopBar from './TopBar';
 
 const { Sider, Content } = Layout;
@@ -17,19 +20,21 @@ const initials = (name: string): string =>
     .join('');
 
 export default function AppLayout() {
-  const { user, can, logout } = useAuth();
+  const { user, can, canAny, logout } = useAuth();
+  const badges = useMenuBadges(can(P.TicketsRead), can(P.MonitoringView), can(P.TicketsCreate));
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [security, setSecurity] = useState(false);
   // Telefon/planshetda menyu butunlay yashirinadi va ustidan ochiladi
   const [narrow, setNarrow] = useState(false);
 
   const groups = useMemo(
     () =>
-      MENU.map((group) => ({ ...group, items: group.items.filter((item) => can(item.permission)) })).filter(
+      MENU.map((group) => ({ ...group, items: group.items.filter((item) => canAny(item.permission)) })).filter(
         (group) => group.items.length > 0,
       ),
-    [can],
+    [canAny],
   );
 
   const selectedKey =
@@ -42,9 +47,18 @@ export default function AppLayout() {
   const defaultOpen = Array.from(new Set(['crm', activeGroup].filter((k): k is string => !!k)));
   const [openKeys, setOpenKeys] = useState<string[]>(defaultOpen);
 
+  const extraOf = (item: MenuEntry) => {
+    const count = item.badge ? badges[item.badge] : 0;
+    return count > 0 ? (
+      <span className={`menu-badge is-${item.badge}`} aria-label={`${count} ta`}>
+        {count > 99 ? '99+' : count}
+      </span>
+    ) : undefined;
+  };
+
   const items = useMemo<MenuProps['items']>(
-    () =>
-      groups.map((group) => ({
+    () => [
+      ...groups.map((group) => ({
         key: group.key,
         icon: group.icon,
         label: group.label,
@@ -53,11 +67,38 @@ export default function AppLayout() {
           icon: item.icon,
           label: <span className="menu-label">{item.label}</span>,
           title: item.label,
-          extra: isPlanned(item.path) ? <span className="planned-tag">reja</span> : undefined,
+          extra: extraOf(item),
         })),
       })),
-    [groups],
+      // Prototipdagi kabi guruhlardan keyin alohida band
+      {
+        key: HELP_ENTRY.path,
+        icon: HELP_ENTRY.icon,
+        label: <span className="menu-label">{HELP_ENTRY.label}</span>,
+        title: HELP_ENTRY.label,
+        extra: extraOf(HELP_ENTRY),
+        className: 'menu-help',
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [groups, badges],
   );
+
+  // Ctrl+K — sahifadagi asosiy qidiruv maydoniga o'tish (Dizayn tizimi → Klaviatura yorliqlari)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        const input = document.querySelector<HTMLInputElement>('input[data-hotkey="search"]');
+        if (input) {
+          e.preventDefault();
+          input.focus();
+          input.select();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const onCollapse = (next: boolean) => {
     setCollapsed(next);
@@ -113,6 +154,11 @@ export default function AppLayout() {
               <span className="sider-user-sub">{sub}</span>
             </span>
           )}
+          {!collapsed && (
+            <Tooltip title="Xavfsizlik: ikki bosqichli himoya">
+              <Button type="text" className="sider-logout" icon={<SafetyCertificateOutlined />} aria-label="Xavfsizlik" onClick={() => setSecurity(true)} />
+            </Tooltip>
+          )}
           <Tooltip title="Tizimdan chiqish" placement={collapsed ? 'right' : 'top'}>
             <Button
               type="text"
@@ -129,6 +175,7 @@ export default function AppLayout() {
         <Content className="app-content">
           <Outlet />
         </Content>
+        {security && <SecurityModal onClose={() => setSecurity(false)} />}
       </Layout>
     </Layout>
   );

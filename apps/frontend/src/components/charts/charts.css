@@ -1,0 +1,213 @@
+/* ---------- Grafiklar: bitta seriyali ustunlar va reyting chiziqlari ---------- */
+.bar-chart {
+  position: relative;
+  width: 100%;
+}
+
+.bar-chart svg {
+  display: block;
+  overflow: visible;
+}
+
+.chart-grid {
+  stroke: #eceef1;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.chart-tick {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-bar {
+  fill: var(--brand);
+  transition: opacity 120ms;
+}
+
+.chart-bar.is-partial {
+  fill: #8cc4c1;
+}
+
+.bar-chart:hover .chart-bar:not(.is-hover) {
+  opacity: 0.55;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(15, 30, 43, 0.12);
+  pointer-events: none;
+}
+
+.chart-tooltip-title {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chart-tooltip-value {
+  font-weight: 600;
+}
+
+.chart-tooltip-hint {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.chart-table-wrap {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.chart-table th {
+  position: sticky;
+  top: 0;
+  padding: 6px 8px;
+  background: #fafbfc;
+  color: var(--ink-2);
+  font-weight: 500;
+  text-align: left;
+}
+
+.chart-table td {
+  padding: 6px 8px;
+  border-top: 1px solid #eef0f3;
+}
+
+/* Reyting: nom va qiymat ustida, ostida chiziq (prototip: "Eng ko'p so'ralgan mavzular") */
+.rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rank-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 5px;
+  font-size: 13px;
+}
+
+.rank-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-no {
+  margin-right: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.rank-value {
+  flex-shrink: 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef3f3;
+}
+
+.rank-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+/* Viloyatlar xaritasi (plitkali kartogramma) */
+.region-map {
+  margin: 0;
+}
+
+.region-map-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 64px;
+  gap: 2px;
+}
+
+.region-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 4px;
+  color: var(--ink);
+  outline-offset: 1px;
+}
+
+.region-tile.is-dark {
+  color: #fff;
+}
+
+.region-tile-name {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.region-tile-value {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.region-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.region-map-scale {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.region-map-scale span {
+  width: 22px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  .region-map-grid {
+    grid-auto-rows: 52px;
+  }
+
+  .region-tile-name {
+    font-size: 9px;
+  }
+}

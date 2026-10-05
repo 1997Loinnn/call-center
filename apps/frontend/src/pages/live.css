@@ -1,0 +1,92 @@
+/* ---------- Jonli holat (prototip: Monitoring artboardi) ---------- */
+.live-header {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.live-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(300px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  .live-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.live-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.live-agents .ant-card-head {
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-block: 8px;
+}
+
+.live-agents .ant-card-extra {
+  margin-inline-start: 0;
+}
+
+.live-long {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.kpi-card-of {
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.queue-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.queue-list li:last-child {
+  border-bottom: 0;
+}
+
+.queue-list .cell-stack {
+  flex: 1;
+}
+
+.queue-long {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #78350f;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.queue-wait {
+  min-width: 44px;
+  font-weight: 500;
+  text-align: right;
+}
+
+.live-wall-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

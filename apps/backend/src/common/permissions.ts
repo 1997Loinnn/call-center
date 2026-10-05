@@ -16,6 +16,12 @@ export const Permission = {
   CallsRead: 'calls.read',
   RecordingsPlay: 'recordings.play',
   TelephonyUse: 'telephony.use',
+  // Chiquvchi kampaniyalarni yaratish, to'xtatish va kontaktlar qo'shish
+  CampaignsManage: 'campaigns.manage',
+  // Bezori va spam raqamlarning qora ro'yxatini yuritish (F-TEL-09)
+  BlacklistManage: 'blacklist.manage',
+  // Bilimlar bazasi maqolalarini yozish va tahrirlash (F-OP-06)
+  KnowledgeManage: 'knowledge.manage',
   MonitoringView: 'monitoring.view',
   ReportsView: 'reports.view',
   OrgRead: 'org.read',

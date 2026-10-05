@@ -19,7 +19,7 @@ export const SYSTEM_ROLES: SystemRoleDefinition[] = [
     name: 'Tizim administratori',
     description: "Foydalanuvchilar, rollar, tuzilma va sozlamalar. Fuqarolar ma'lumotlariga kirish yo'q.",
     scope: DataScope.OWN,
-    permissions: [P.UsersManage, P.OrgRead, P.OrgManage, P.SettingsManage],
+    permissions: [P.UsersManage, P.OrgRead, P.OrgManage, P.SettingsManage, P.KnowledgeManage],
   },
   {
     code: 'DIRECTOR',
@@ -69,6 +69,9 @@ export const SYSTEM_ROLES: SystemRoleDefinition[] = [
       P.CallsRead,
       P.RecordingsPlay,
       P.TelephonyUse,
+      P.CampaignsManage,
+      P.BlacklistManage,
+      P.KnowledgeManage,
       P.MonitoringView,
       P.ReportsView,
       P.OrgRead,

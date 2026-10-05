@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, TicketChannel, TicketEventType, TicketStatus, TicketType } from '@prisma/client';
+import { AiService } from '../ai/ai.module';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../integrations/notifications.service';
+import { SmsService } from '../integrations/sms';
 import { AuthUser } from '../common/auth-user';
 import { hasPermission, managesOrgUnit, ticketScopeWhere } from '../common/data-scope';
 import { Page, pageArgs, RequestMeta } from '../common/http';
@@ -15,7 +18,9 @@ import { Permission } from '../common/permissions';
 import { normalizePhone } from '../common/phone';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
+import { SettingsService } from '../settings/settings.service';
 import { pickBestRule, RoutingContext } from './routing';
+import { loadWorkCalendar } from './ticket-automation';
 import { ticketsToCsv } from './ticket-export';
 import {
   canCloseImmediately,
@@ -36,6 +41,7 @@ const LIST_SELECT = {
   subject: true,
   isAnonymous: true,
   isConfidential: true,
+  aiFlags: true,
   createdAt: true,
   dueAt: true,
   closedAt: true,
@@ -50,7 +56,7 @@ const DETAIL_INCLUDE = {
   category: { select: { id: true, nameUz: true, slaDays: true, sortOrder: true, parent: { select: { id: true, nameUz: true } } } },
   region: { select: { id: true, nameUz: true } },
   district: { select: { id: true, nameUz: true } },
-  citizen: { select: { id: true, phone: true, fullName: true, address: true } },
+  citizen: { select: { id: true, phone: true, fullName: true, address: true, extraPhones: true } },
   createdBy: { select: { id: true, fullName: true } },
   assignedOrgUnit: { select: { id: true, name: true, path: true } },
   assignee: { select: { id: true, fullName: true } },
@@ -58,8 +64,16 @@ const DETAIL_INCLUDE = {
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     include: { actor: { select: { id: true, fullName: true } }, orgUnit: { select: { id: true, name: true } } },
   },
-  attachments: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true } },
+  attachments: { select: { id: true, fileName: true, mimeType: true, sizeBytes: true, createdAt: true, uploadedBy: { select: { id: true, fullName: true } } }, orderBy: { createdAt: 'asc' } },
+  smsMessages: { select: { id: true, phone: true, text: true, status: true, error: true, createdAt: true, deliveredAt: true }, orderBy: { createdAt: 'asc' } },
+  duplicateOf: { select: { id: true, number: true, status: true, createdAt: true } },
+  duplicates: { select: { id: true, number: true, status: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
   calls: { select: { id: true, startedAt: true, talkSeconds: true, result: true } },
+  extraTopics: { select: { category: { select: { id: true, nameUz: true, sortOrder: true, parent: { select: { id: true, nameUz: true } } } } } },
+  participants: {
+    select: { createdAt: true, orgUnit: { select: { id: true, name: true } }, addedBy: { select: { id: true, fullName: true } } },
+    orderBy: { createdAt: 'asc' },
+  },
 } satisfies Prisma.TicketInclude;
 
 /** Bitta eksportdagi eng ko'p qator: kattaroq hajm hisobotlar moduli orqali. */
@@ -70,6 +84,8 @@ const overdueWhere = (): Prisma.TicketWhereInput => ({ dueAt: { lt: new Date() }
 type VisibleTicket =Prisma.TicketGetPayload<{ include: { assignedOrgUnit: { select: { id: true; path: true } } } }>;
 
 interface TransitionOptions {
+  /** Audit jurnali uchun so'rov manbai (IP, brauzer) */
+  meta?: RequestMeta;
   allowedFrom: TicketStatus[];
   to: TicketStatus;
   event: TicketEventType;
@@ -86,6 +102,10 @@ export class TicketsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeGateway,
+    private readonly settings: SettingsService,
+    private readonly notifications: NotificationsService,
+    private readonly sms: SmsService,
+    private readonly ai: AiService,
     config: ConfigService,
   ) {
     this.numberPrefix = config.get<string>('TICKET_NUMBER_PREFIX') ?? '1097';
@@ -159,6 +179,20 @@ export class TicketsService {
     return { total, byStatus, overdue };
   }
 
+  /**
+   * Menyudagi "Murojaatlar" nishoni: foydalanuvchi amalini kutayotganlar — yo'naltirish (yangi va qaytarilgan),
+   * taqsimlash (yo'naltirilgan), javob yozish (o'ziga biriktirilgan, ijroda) va tasdiqlash (javob tayyor).
+   */
+  async inboxCount(user: AuthUser): Promise<{ count: number }> {
+    const waiting: Prisma.TicketWhereInput[] = [];
+    if (hasPermission(user, Permission.TicketsRoute)) waiting.push({ status: { in: [TicketStatus.NEW, TicketStatus.RETURNED] } });
+    if (hasPermission(user, Permission.TicketsAssign)) waiting.push({ status: TicketStatus.ROUTED });
+    if (hasPermission(user, Permission.TicketsAnswer)) waiting.push({ status: TicketStatus.IN_PROGRESS, assigneeId: user.id });
+    if (hasPermission(user, Permission.TicketsApprove)) waiting.push({ status: TicketStatus.ANSWERED });
+    if (waiting.length === 0) return { count: 0 };
+    return { count: await this.prisma.ticket.count({ where: { AND: [ticketScopeWhere(user), { OR: waiting }] } }) };
+  }
+
   /** CSV eksport (joriy filtr, ko'pi bilan EXPORT_LIMIT qator). Shaxsiy ma'lumot chiqadi — audit jurnaliga yoziladi. */
   async exportCsv(user: AuthUser, query: TicketsQueryDto, meta: RequestMeta): Promise<string> {
     const rows = await this.prisma.ticket.findMany({
@@ -222,6 +256,16 @@ export class TicketsService {
       : null;
     if (dto.categoryId && !category) throw new BadRequestException('Toifa topilmadi');
 
+    // Qo'shimcha mavzular: asosiysidan tashqari; maxfiy mavzu faqat asosiy bo'la oladi (yo'naltirish shunga bog'liq)
+    const extraTopicIds = [...new Set(dto.topicIds ?? [])].filter((id) => id !== category?.id);
+    if (extraTopicIds.length > 0) {
+      const extras = await this.prisma.category.findMany({ where: { id: { in: extraTopicIds }, isActive: true }, select: { isConfidential: true } });
+      if (extras.length !== extraTopicIds.length) throw new BadRequestException("Qo'shimcha mavzulardan biri topilmadi");
+      if (!category?.isConfidential && extras.some((e) => e.isConfidential)) {
+        throw new BadRequestException('Maxfiy mavzu (korrupsiya) asosiy mavzu sifatida tanlanadi');
+      }
+    }
+
     const isConfidential = dto.type === TicketType.CORRUPTION || (category?.isConfidential ?? false);
     let targetOrgUnitId = dto.targetOrgUnitId ?? null;
     // Maxfiy murojaat yaratilgan zahoti operator ko'rinishidan chiqadi, shuning uchun darhol yo'naltiriladi
@@ -231,7 +275,11 @@ export class TicketsService {
     if (targetOrgUnitId) await this.assertActiveOrgUnit(targetOrgUnitId);
 
     const phone = dto.citizenPhone ? normalizePhone(dto.citizenPhone) : null;
+    const extraPhones = [...new Set((dto.extraPhones ?? []).map(normalizePhone))].filter((p) => /^\+\d{11,15}$/.test(p) && p !== phone);
+    if ((dto.extraPhones?.length ?? 0) > 0 && !phone) throw new BadRequestException("Qo'shimcha raqam fuqaroning asosiy raqami bilan birga kiritiladi");
     const now = new Date();
+    // Muddat oxiri dam olish yoki bayram kuniga to'g'ri kelsa, keyingi ish kuniga suriladi
+    const calendar = await loadWorkCalendar(this.prisma, this.settings);
     const status = dto.closeImmediately
       ? TicketStatus.CLOSED
       : targetOrgUnitId
@@ -261,11 +309,15 @@ export class TicketsService {
     }
 
     const ticket = await this.prisma.$transaction(async (tx) => {
+      const existing = phone ? await tx.citizen.findUnique({ where: { phone }, select: { extraPhones: true } }) : null;
       const citizen = phone
         ? await tx.citizen.upsert({
             where: { phone },
-            update: { fullName: dto.citizenName || undefined },
-            create: { phone, fullName: dto.citizenName, regionId: dto.regionId, districtId: dto.districtId },
+            update: {
+              fullName: dto.citizenName || undefined,
+              extraPhones: extraPhones.length > 0 ? [...new Set([...(existing?.extraPhones ?? []), ...extraPhones])] : undefined,
+            },
+            create: { phone, fullName: dto.citizenName, regionId: dto.regionId, districtId: dto.districtId, extraPhones },
           })
         : null;
 
@@ -287,11 +339,12 @@ export class TicketsService {
           applicationNumber: dto.applicationNumber,
           createdById: user.id,
           assignedOrgUnitId: targetOrgUnitId,
-          dueAt: dto.closeImmediately ? null : computeDueAt(now, category?.slaDays ?? DEFAULT_SLA_DAYS),
+          dueAt: dto.closeImmediately ? null : computeDueAt(now, category?.slaDays ?? DEFAULT_SLA_DAYS, calendar),
           answer: dto.closeImmediately ? dto.answer : undefined,
           answeredAt: dto.closeImmediately ? now : undefined,
           closedAt: dto.closeImmediately ? now : undefined,
           events: { create: events },
+          extraTopics: extraTopicIds.length > 0 ? { create: extraTopicIds.map((categoryId) => ({ categoryId })) } : undefined,
         },
         select: LIST_SELECT,
       });
@@ -313,16 +366,71 @@ export class TicketsService {
       details: { number: ticket.number, status },
       ...meta,
     });
-    // TODO(F-NOT-01): fuqaroga SMS — "Murojaatingiz №... qabul qilindi"
+    if (!dto.isAnonymous) await this.linkDuplicate(ticket.id).catch(() => undefined);
+    // F-AI-04: korrupsiya, tahdid va h.k. kalit so'zlari — belgi va mas'ullarga xabar
+    await this.ai.flagTicket(ticket.id).catch(() => undefined);
+    // F-CRM-02, F-NOT-01: murojaat raqami fuqaroga SMS orqali (sozlamada yoqilgan bo'lsa)
+    if ((await this.settings.get('automation')).smsOnCreate) await this.smsCitizen(ticket, 'ticket_created');
     return ticket;
+  }
+
+  /** Fuqaroga shablon bo'yicha SMS; anonim murojaatga yuborilmaydi. Xato murojaat amalini to'xtatmaydi. */
+  private async smsCitizen(
+    ticket: { id: number; number: string; isAnonymous: boolean; citizen: { id: number; phone: string } | null },
+    template: 'ticket_created' | 'ticket_closed',
+  ): Promise<void> {
+    if (ticket.isAnonymous || !ticket.citizen) return;
+    try {
+      const text = await this.sms.template(template, { raqam: ticket.number });
+      await this.sms.send({ phone: ticket.citizen.phone, text, template, citizenId: ticket.citizen.id, ticketId: ticket.id });
+    } catch {
+      /* SMS navbati o'zi qayta urinadi */
+    }
+  }
+
+  /**
+   * Takroriy murojaat (F-CRM-08): shu fuqaroning shu mavzudagi oldingi murojaati sozlamadagi oraliqda
+   * (standart 30 kun) bo'lsa, asl murojaatga bog'lanadi. Takrorlar soni chegaraga yetsa — supervisorlarga xabar.
+   */
+  private async linkDuplicate(ticketId: number): Promise<void> {
+    const settings = (await this.settings.get('automation')).duplicateDetection;
+    if (!settings.enabled) return;
+    const ticket = await this.prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, number: true, citizenId: true, categoryId: true, createdAt: true, subject: true },
+    });
+    if (!ticket?.citizenId || !ticket.categoryId) return;
+    const since = new Date(ticket.createdAt.getTime() - settings.windowHours * 3600_000);
+    const previous = await this.prisma.ticket.findFirst({
+      where: { id: { not: ticket.id }, citizenId: ticket.citizenId, categoryId: ticket.categoryId, isAnonymous: false, createdAt: { gte: since, lte: ticket.createdAt } },
+      select: { id: true, duplicateOfId: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!previous) return;
+    const original = await this.prisma.ticket.findUniqueOrThrow({ where: { id: previous.duplicateOfId ?? previous.id }, select: { id: true, number: true } });
+    await this.prisma.$transaction([
+      this.prisma.ticket.update({ where: { id: ticket.id }, data: { duplicateOfId: original.id } }),
+      this.prisma.ticketEvent.create({ data: { ticketId: ticket.id, type: TicketEventType.COMMENT, comment: `Takroriy murojaat: asl murojaat № ${original.number}` } }),
+      this.prisma.ticketEvent.create({ data: { ticketId: original.id, type: TicketEventType.COMMENT, comment: `Fuqaro shu mavzuda qayta murojaat qildi: № ${ticket.number}` } }),
+    ]);
+    const repeats = await this.prisma.ticket.count({ where: { OR: [{ id: original.id }, { duplicateOfId: original.id }], createdAt: { gte: since } } });
+    if (repeats >= settings.minTickets) {
+      await this.notifications.notifyUsers(await this.notifications.supervisors(), {
+        type: 'ticket.duplicate',
+        title: `Takroriy murojaat (${repeats} marta): ${original.number}`,
+        body: `Fuqaro bir mavzuda ${repeats} marta murojaat qildi — ${ticket.subject}`,
+        link: `/tickets/${original.id}`,
+      });
+    }
   }
 
   // ───────────── Holat o'zgarishlari ─────────────
 
-  async route(user: AuthUser, id: number, dto: RouteTicketDto) {
+  async route(user: AuthUser, id: number, dto: RouteTicketDto, meta?: RequestMeta) {
     await this.assertActiveOrgUnit(dto.orgUnitId);
     const ticket = await this.findVisible(user, id);
     return this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.NEW, TicketStatus.RETURNED],
       to: TicketStatus.ROUTED,
       event: TicketEventType.ROUTED,
@@ -332,7 +440,7 @@ export class TicketsService {
     });
   }
 
-  async assign(user: AuthUser, id: number, dto: AssignTicketDto) {
+  async assign(user: AuthUser, id: number, dto: AssignTicketDto, meta?: RequestMeta) {
     const ticket = await this.findVisible(user, id);
     this.assertManages(user, ticket);
     const assignee = await this.prisma.user.findFirst({
@@ -346,6 +454,7 @@ export class TicketsService {
     if (!assignee) throw new BadRequestException("Ijrochi shu bo'linma xodimi bo'lishi kerak");
 
     const updated = await this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.ROUTED],
       to: TicketStatus.IN_PROGRESS,
       event: TicketEventType.ASSIGNED,
@@ -356,24 +465,31 @@ export class TicketsService {
     return updated;
   }
 
-  async returnTicket(user: AuthUser, id: number, comment: string) {
+  async returnTicket(user: AuthUser, id: number, comment: string, meta?: RequestMeta) {
     const ticket = await this.findVisible(user, id);
     this.assertManages(user, ticket);
-    return this.transition(user, ticket, {
+    const updated = await this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.ROUTED],
       to: TicketStatus.RETURNED,
       event: TicketEventType.RETURNED,
       comment,
       data: { assignedOrgUnitId: null, assigneeId: null },
     });
+    // Qaytarilgan murojaat yaratgan operatorga va (sozlamada yoqilgan bo'lsa) supervisorlar navbatiga
+    const { returnToSupervisor } = await this.settings.get('automation');
+    const recipients = [...(ticket.createdById ? [ticket.createdById] : []), ...(returnToSupervisor ? await this.notifications.supervisors() : [])];
+    await this.notifications.notifyUsers(recipients, { type: 'ticket.returned', title: `Murojaat qaytarildi: ${updated.number}`, body: comment, link: `/tickets/${updated.id}` });
+    return updated;
   }
 
-  async answer(user: AuthUser, id: number, dto: AnswerTicketDto) {
+  async answer(user: AuthUser, id: number, dto: AnswerTicketDto, meta?: RequestMeta) {
     const ticket = await this.findVisible(user, id);
     const isAssignee = ticket.assigneeId === user.id;
     const isManager = hasPermission(user, Permission.TicketsAssign) && managesOrgUnit(user, ticket.assignedOrgUnit?.path);
     if (!isAssignee && !isManager) throw new ForbiddenException('Javobni faqat ijrochi yoki bo\'linma rahbari yozadi');
     return this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.IN_PROGRESS],
       to: TicketStatus.ANSWERED,
       event: TicketEventType.ANSWERED,
@@ -381,22 +497,26 @@ export class TicketsService {
     });
   }
 
-  async approve(user: AuthUser, id: number) {
+  async approve(user: AuthUser, id: number, meta?: RequestMeta) {
     const ticket = await this.findVisible(user, id);
     this.assertManages(user, ticket);
-    // TODO(F-CRM-07): natijani fuqaroga SMS yoki qayta qo'ng'iroq orqali ma'lum qilish
-    return this.transition(user, ticket, {
+    const updated = await this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.ANSWERED],
       to: TicketStatus.CLOSED,
       event: TicketEventType.APPROVED,
       data: { closedAt: new Date() },
     });
+    // F-CRM-07: natija fuqaroga SMS orqali; batafsil javob 1097 yoki qayta qo'ng'iroq kampaniyasi orqali
+    await this.smsCitizen(updated, 'ticket_closed');
+    return updated;
   }
 
-  async reject(user: AuthUser, id: number, comment: string) {
+  async reject(user: AuthUser, id: number, comment: string, meta?: RequestMeta) {
     const ticket = await this.findVisible(user, id);
     this.assertManages(user, ticket);
     const updated = await this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.ANSWERED],
       to: TicketStatus.IN_PROGRESS,
       event: TicketEventType.REJECTED,
@@ -408,12 +528,13 @@ export class TicketsService {
     return updated;
   }
 
-  async reopen(user: AuthUser, id: number, comment: string) {
+  async reopen(user: AuthUser, id: number, comment: string, meta?: RequestMeta) {
     const ticket = await this.findVisible(user, id);
     if (!ticket.assigneeId) {
       throw new BadRequestException('Bu murojaat ijroga yuborilmasdan yopilgan; yangi murojaat yarating');
     }
     return this.transition(user, ticket, {
+      meta,
       allowedFrom: [TicketStatus.CLOSED],
       to: TicketStatus.IN_PROGRESS,
       event: TicketEventType.REOPENED,
@@ -439,7 +560,7 @@ export class TicketsService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx) => {
       // Optimistik qulf: holat shu orada boshqa foydalanuvchi tomonidan o'zgargan bo'lsa, hech narsa yozilmaydi
       const result = await tx.ticket.updateMany({
         where: { id: ticket.id, status: ticket.status },
@@ -460,6 +581,36 @@ export class TicketsService {
         },
       });
       return tx.ticket.findUniqueOrThrow({ where: { id: ticket.id }, select: LIST_SELECT });
+    });
+    await this.auditTransition(user, ticket, updated, opts);
+    return updated;
+  }
+
+  /** Holat o'zgarishi audit jurnaliga: avval → keyin (holat, bo'linma, ijrochi), kim va qayerdan. */
+  private async auditTransition(
+    user: AuthUser,
+    before: VisibleTicket,
+    after: Prisma.TicketGetPayload<{ select: typeof LIST_SELECT }>,
+    opts: TransitionOptions,
+  ): Promise<void> {
+    const changes: Record<string, { from: string | null; to: string | null }> = {
+      status: { from: STATUS_LABELS[before.status], to: STATUS_LABELS[after.status] },
+    };
+    if ((before.assignedOrgUnit?.id ?? null) !== (after.assignedOrgUnit?.id ?? null)) {
+      const from = before.assignedOrgUnit ? await this.prisma.orgUnit.findUnique({ where: { id: before.assignedOrgUnit.id }, select: { name: true } }) : null;
+      changes.orgUnit = { from: from?.name ?? null, to: after.assignedOrgUnit?.name ?? null };
+    }
+    if (before.assigneeId !== (after.assignee?.id ?? null)) {
+      const from = before.assigneeId ? await this.prisma.user.findUnique({ where: { id: before.assigneeId }, select: { fullName: true } }) : null;
+      changes.assignee = { from: from?.fullName ?? null, to: after.assignee?.fullName ?? null };
+    }
+    await this.audit.log({
+      actorId: user.id,
+      action: 'ticket.transition',
+      entityType: 'Ticket',
+      entityId: before.id,
+      details: { number: after.number, event: opts.event, changes, ...(opts.comment ? { comment: opts.comment } : {}) },
+      ...opts.meta,
     });
   }
 
@@ -494,9 +645,7 @@ export class TicketsService {
   }
 
   private async notify(userId: number, type: string, title: string, body: string, ticketId: number): Promise<void> {
-    const link = `/tickets/${ticketId}`;
-    await this.prisma.notification.create({ data: { userId, type, title, body, link } });
-    this.realtime.emitToUser(userId, 'notification', { type, title, body, link });
+    await this.notifications.notifyUsers([userId], { type, title, body, link: `/tickets/${ticketId}` });
   }
 
   private hideAnonymous<T extends { isAnonymous: boolean; citizen: unknown }>(user: AuthUser, ticket: T): T {

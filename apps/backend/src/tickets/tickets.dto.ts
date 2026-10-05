@@ -1,6 +1,6 @@
 import { TicketChannel, TicketStatus, TicketType } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ArrayMaxSize, ArrayUnique, IsArray, IsBoolean, IsDate, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 import { PageQueryDto } from '../common/http';
 
 export class CreateTicketDto {
@@ -14,6 +14,14 @@ export class CreateTicketDto {
   @IsOptional()
   @IsInt()
   categoryId?: number;
+
+  /** Qo'shimcha mavzular (operator bir nechta mavzu tanlasa); asosiysi — categoryId */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @ArrayUnique()
+  @IsInt({ each: true })
+  topicIds?: number[];
 
   @IsOptional()
   @IsInt()
@@ -42,6 +50,14 @@ export class CreateTicketDto {
   @IsString()
   @MaxLength(255)
   citizenName?: string;
+
+  /** Bog'lanish uchun qo'shimcha raqamlar (fuqaro kartasiga qo'shiladi) */
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(32, { each: true })
+  extraPhones?: string[];
 
   @IsOptional()
   @IsBoolean()

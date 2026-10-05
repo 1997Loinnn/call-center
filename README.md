@@ -75,6 +75,22 @@ Seed quyidagi foydalanuvchilarni yaratadi. Parol `apps/backend/.env` dagi `SEED_
 | `korrupsiya` | Korrupsiyaga qarshi kurash bo'limi | Markaziy apparat |
 | `auditor` | Auditor | Kadastr agentligi |
 
+### Demo ma'lumotlar
+
+Barcha sahifalar va hisobotlarni to'ldirish uchun (faqat ishlab chiqish yoki test bazasida, seed'dan keyin):
+
+```bash
+npm run db:fake                   # 100 kunlik qo'ng'iroqlar, murojaatlar, kampaniyalar, audit va h.k.
+npm run db:fake -- --work-today   # bugun dam olish kuni bo'lsa ham "bugungi" ko'rsatkichlar to'lsin
+```
+
+Qo'shimcha ~80 xodim demo foydalanuvchilar paroli bilan kiradi. Bir marta ishlaydi; qaytadan: `npx prisma migrate reset` va yana `npm run db:fake`. Batafsil: [docs/database.md](docs/database.md#demo-malumotlar-faker).
+
+### Muhit o'zgaruvchilari (ishlab chiqish)
+
+- `MOCK_QUEUE_SIMULATION=false` — `PBX_DRIVER=mock` rejimida navbat taqlidini o'chiradi (standart: yoqilgan; jonli holat va ogohlantirishlarni sinash uchun soat 8–20 oralig'ida navbatga qo'ng'iroqlar tushadi).
+- `ALERTS_EVALUATOR=false` — ogohlantirishlarni avtomatik baholashni o'chiradi (masalan, test bazasida).
+
 ### UCM6510'siz test qo'ng'irog'i
 
 `PBX_DRIVER=mock` rejimida `operator1` sifatida kirib, operator panelidagi **Test qo'ng'iroq** tugmasini bosing. Qo'ng'iroq real vaqtda keladi, fuqaro kartasi o'zi ochiladi, 20 soniyadan keyin CDR qo'ng'iroqlar jurnaliga yoziladi.
@@ -103,15 +119,25 @@ npm run typecheck
 | Kirish va xavfsizlik | 9-bo'lim | Tayyor: httpOnly cookie, 5 xatodan keyin bloklash, so'rovlar chegarasi, audit jurnali (bazada o'zgartirib bo'lmaydi) |
 | Rollar va ko'rish doirasi | 4-bo'lim | Tayyor: 9 ta tizim roli, OWN / UNIT / UNIT_TREE / ALL, maxfiy va anonim murojaatlar |
 | Tashkiliy tuzilma | 5-bo'lim | Tayyor: 45 bo'linma (kadastr.uz), daraxt, quyi bo'linma qo'shish |
-| Murojaatlar (CRM) | F-CRM-01..10 | Asosiy oqim tayyor: yaratish, yo'naltirish jadvali, 6 holat, ijro muddati, tarix. Keyin: SMS, takrorlarni aniqlash, fayl ilovalari, eskalatsiya |
-| Operator paneli | F-OP-01..07 | Fuqaro kartasi, murojaat formasi, real vaqt qo'ng'iroq hodisalari. WebRTC softfon — 3-oy |
-| Telefoniya | F-TEL | PBX adapteri, mock drayver, UCM6510 adapteri skeleti (API login). AMI, CDR va click-to-call UCM6510 tekshiruvidan keyin |
-| Qo'ng'iroqlar jurnali | F-REC-04, 06 | CDR yozish va ro'yxat. Audio arxiv (NAS/MinIO) — 2-oy |
-| Dashboard | F-REP-06 | Bugungi qo'ng'iroqlar va murojaatlar ko'rsatkichlari |
-| Billing, omnikanal, AI, monitoring | F-BIL, F-OMNI, F-AI, F-MON | Bazada jadvallari tayyor, menyuda yo'l xaritasi sahifalari bor |
+| Murojaatlar (CRM) | F-CRM-01..10 | Asosiy oqim tayyor: yaratish (bir nechta mavzu), yo'naltirish jadvali, 6 holat, ijro muddati, tarix, ichki vazifalar, ishtirokchi bo'linmalar, karta (PDF) va javob xati (DOCX), holat o'zgarishlari audit jurnalida. Keyin: SMS, takrorlarni aniqlash, fayl ilovalari, eskalatsiya |
+| CRM sozlamalari | F-ADM-02, F-REP-05 | Tayyor: toifalar va mavzular (ijro muddati, maxfiylik, murojaat turlari), yo'naltirish qoidalari va tekshirish, avtomatik amallar sozlamasi, eksport shablonlari (XLSX, CSV, PDF). Jadval bo'yicha email — SMTP ulangach |
+| Operator paneli | F-OP-01..07 | Fuqaro kartasi (qo'shimcha raqamlar bilan), murojaat formasi (bir nechta mavzu, murojaat turi bo'yicha), bog'lanish uchun kontaktlar, real vaqt qo'ng'iroq hodisalari, Ctrl+S / Ctrl+K. WebRTC softfon — 3-oy |
+| Telefoniya | F-TEL | PBX adapteri, mock drayver (navbat taqlidi bilan), UCM6510 adapteri skeleti (API login). AMI (navbat, tinglash), CDR va click-to-call UCM6510 tekshiruvidan keyin |
+| Navbatlar va IVR | F-TEL-02..06, F-ADM-03 | Tayyor: ko'p darajali IVR muharriri, navbatlar (taqsimlash, callback chegarasi, o'rnini aytish) va operatorlarni biriktirish (asosiy/zaxira), ovozli xabarlar (matn + audio yuklash), ish vaqtidan tashqari avtojavob va ovozli xabar, tekshiruv va qo'ng'iroq simulyatori, «PBX'ga yuklash» (versiya va holat). UCM6510 ga avtomatik yuklash API amallari tasdiqlangach (2-etap) |
+| Chiquvchi qo'ng'iroqlar | — | Tayyor: kampaniyalar (qayta aloqa, so'rovnoma, eslatma, xabardor qilish), kontaktlar ro'yxat yoki yopilgan murojaatlardan, "ko'rib chiqib terish", natija va so'rovnoma, qayta urinishlar |
+| Qo'ng'iroqlar jurnali | F-REC-04, 06 | CDR yozish va ro'yxat, yozuvni tinglash. Audio arxiv (NAS/MinIO) — 2-oy |
+| Jonli holat va ogohlantirishlar | F-MON-01..03 | Tayyor: operatorlar holati, navbat, bugungi SLA, soatlik grafik; limitlar bo'yicha avtomatik ogohlantirishlar (har 30 s), supervisorlarga bildirishnoma. Navbat va trunk holati UCM6510'da AMI ulangach |
+| Analitika va hisobotlar | F-REP-01..06, F-BIL-04 | Tayyor: davr bo'yicha ko'rsatkichlar, kunlik/soatlik grafik, mavzular, operatorlar samaradorligi, billing, tayyor hisobotlar va XLSX eksport |
+| Audit jurnali | 9-bo'lim | Tayyor: toifalar, qidiruv, foydalanuvchi va davr filtri, o'zgarishlar (avval → keyin), XLSX eksport |
+| Tizim sozlamalari | F-ADM-01..04 | Tayyor: ish vaqti, xizmat darajasi maqsadlari, yozuvlarni saqlash muddati, SMS shablonlari, bayramlar, integratsiyalar holati |
+| Omnikanal | F-OMNI-01..04, F-CRM-10 | Tayyor: operator oynasi (suhbatlar, biriktirish, tez javoblar, yozishmadan murojaat), veb-chat vidjeti (`/webchat.js`), Telegram bot (long polling yoki webhook), email (kiruvchi xat `/api/public/email/inbound`, javob SMTP orqali), murojaat raqami bo'yicha avtomatik holat javobi, fuqaro kartasida yozishmalar. Kanal ulanmasa javoblar navbatda turadi va ulangach yuboriladi |
+| Foydalanuvchi qo'llanmasi | 14-bo'lim | Tayyor: rollar bo'yicha qadam-baqadam yo'riqnoma, qidiruv, chop etish |
+| AI | F-AI | Bazada jadvallari tayyor (`transcripts`) |
 
 ## Ishlab chiqarishdan oldin
 
 - `JWT_SECRET` ni yangi tasodifiy qiymatga almashtiring va HTTPS orqasida `COOKIE_SECURE=true` qiling.
 - `SEED_DEMO_USERS=false` qo'ying va demo foydalanuvchilarni o'chiring.
 - Bo'linmalar nomlari, SOATO kodlari va tuman filiallari ro'yxatini buyurtmachi bilan tasdiqlang (TZ 16-bo'lim).
+#   c a l l - c e n t e r  
+ 
